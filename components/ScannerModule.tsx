@@ -40,7 +40,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
     });
   };
@@ -62,7 +62,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         const data = await analyzeMealImage(compressedBase64);
         setResult(data);
       } catch (err: any) {
-        setError(err.message || "Er is iets misgegaan bij het verbinden met de AI.");
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -86,16 +86,14 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     setResult(null);
   };
 
-  const isLikelyFood = result && (result.calories !== undefined);
-
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Food Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Maak een foto van je bord.</p>
+        <p className="text-sm text-slate-500 font-medium">Log je macro's met één foto.</p>
       </header>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
+      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
         <StatItem label="Kcal" value={dailyTotal.cal} color="text-slate-900" />
         <StatItem label="Eiwit" value={`${dailyTotal.prot}g`} color="text-brand-500" />
         <StatItem label="Koolh" value={`${dailyTotal.carbs}g`} color="text-orange-500" />
@@ -106,10 +104,10 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         {!preview ? (
           <button 
             onClick={() => fileInputRef.current?.click()} 
-            className="w-full aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] flex flex-col items-center justify-center gap-4 hover:border-brand-500 active:scale-95 transition-all"
+            className="w-full aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] flex flex-col items-center justify-center gap-4 hover:border-brand-500 hover:bg-white active:scale-95 transition-all group"
           >
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-3xl shadow-sm">📸</div>
-            <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Maak Foto</span>
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-3xl shadow-sm group-hover:shadow-md transition-all">📸</div>
+            <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Maak of kies foto</span>
           </button>
         ) : (
           <div className="bg-white rounded-[40px] overflow-hidden border border-slate-100 shadow-2xl relative">
@@ -118,12 +116,12 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
             {loading && (
               <div className="absolute inset-0 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center gap-4">
                 <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="font-black text-slate-900 animate-pulse uppercase tracking-[0.2em] text-[10px]">AI denkt na...</p>
+                <p className="font-black text-slate-900 animate-pulse uppercase tracking-[0.2em] text-[10px]">AI analyseert je bord...</p>
               </div>
             )}
 
             {result && !loading && (
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 animate-slide-up">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 leading-tight">{result.name}</h3>
                   <p className="text-4xl font-black text-brand-600 mt-2">{result.calories} <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">kcal</span></p>
@@ -152,7 +150,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                     onClick={handleConfirm} 
                     className="flex-[2] bg-brand-600 text-white font-black p-5 rounded-2xl shadow-lg active:scale-95 transition-all"
                   >
-                    Bevestigen
+                    Toevoegen
                   </button>
                 </div>
               </div>
@@ -161,11 +159,13 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
             {error && !loading && (
               <div className="p-8 text-center space-y-6">
                 <div className="text-4xl">⚠️</div>
-                <p className="text-red-600 text-sm font-bold leading-relaxed">{error}</p>
-                <div className="p-3 bg-slate-50 rounded-xl text-[10px] text-slate-400 font-mono break-all">
-                  Controleer of de API Key in Vercel correct is ingesteld.
+                <div className="space-y-2">
+                   <p className="text-red-600 text-sm font-bold leading-relaxed">{error}</p>
+                   {error.includes('API_KEY') && (
+                     <p className="text-[10px] text-slate-400">Controleer je Vercel project instellingen.</p>
+                   )}
                 </div>
-                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl">Probeer Opnieuw</button>
+                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl">Opnieuw proberen</button>
               </div>
             )}
           </div>
