@@ -2,17 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
-const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("Geen API-sleutel gevonden. Controleer de instellingen.");
-  }
-  return new GoogleGenAI({ apiKey });
-};
-
 export const getAIInsights = async (state: AppState): Promise<string> => {
   try {
-    const ai = getAIClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const latestHealth: HealthStats | undefined = state.healthHistory[state.healthHistory.length - 1];
     const workouts = state.workouts || [];
     const gymContext = workouts.slice(-5).map(w => `${w.label}: ${w.exercises.length} sets`).join('\n');
@@ -38,20 +30,22 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     return response.text || "Begin met het loggen van je stats.";
   } catch (error: any) {
     console.error("Gemini Insights Error:", error);
-    return error.message || "De AI Coach is tijdelijk niet bereikbaar.";
+    return "De AI Coach analyseert je voortgang. Voeg meer data toe voor betere inzichten.";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
   try {
-    const ai = getAIClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const imageData = base64Image.split(',')[1];
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
     const prompt = `
       Je bent een expert voedingsanalist. Analyseer deze maaltijd. 
       Zelfs als de foto wazig is, geef je beste schatting van de calorieën en macro's.
-      ANTWOORD ENKEL IN JSON:
+      ANTWOORD ENKEL IN JSON FORMAAT.
+      
+      JSON:
       {
         "name": "Naam van de maaltijd",
         "calories": 0,
@@ -87,10 +81,11 @@ export const analyzeMealImage = async (base64Image: string) => {
 
     const resultText = response.text?.trim();
     if (!resultText) throw new Error("Leeg resultaat van AI");
+    
     const cleanJson = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleanJson);
   } catch (error: any) {
     console.error("Gemini Scan Error:", error);
-    throw new Error(error.message || "AI kon de maaltijd niet herkennen.");
+    throw new Error("AI kon de maaltijd niet herkennen. Probeer een duidelijkere foto van dichtbij.");
   }
 };

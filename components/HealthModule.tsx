@@ -15,7 +15,7 @@ const GOALS = [
   "Kracht Vergroten"
 ];
 
-// BELANGRIJK: Definieer dit BUITEN de HealthModule om te voorkomen dat de focus verspringt
+// Extern gedefinieerd om re-renders en focus-verlies te voorkomen
 const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-50">
     <div className="flex items-center gap-2 mb-3">
@@ -43,7 +43,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
   const [saved, setSaved] = useState(false);
 
-  // Synchroniseer met opgeslagen data bij het laden
+  // Zorg dat bij refresh de data weer in de velden staat
   useEffect(() => {
     if (latest) {
       setSleep(latest.sleep?.toString() || '');
@@ -93,7 +93,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Mijn Statistieken</h2>
-          <p className="text-sm text-slate-500 font-medium">Bewaard in je profiel.</p>
+          <p className="text-sm text-slate-500 font-medium">Bewaard in je lokale profiel.</p>
         </div>
         {saved && (
           <div className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full animate-bounce">
@@ -105,14 +105,14 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
       {bmi && (
         <div className="bg-slate-900 p-6 rounded-[32px] text-white flex justify-between items-center shadow-xl">
           <div>
-            <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">Mijn BMI</div>
+            <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">Jouw BMI</div>
             <div className="text-4xl font-black">{bmi}</div>
           </div>
           <div className="text-right">
             <div className={`text-xs font-bold uppercase tracking-widest ${bmiCategory?.color}`}>
               {bmiCategory?.label}
             </div>
-            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Gebaseerd op je lengte en gewicht.</div>
+            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Op basis van lengte en gewicht.</div>
           </div>
         </div>
       )}
