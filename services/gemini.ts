@@ -33,13 +33,15 @@ export const analyzeMealImage = async (base64Image: string) => {
 
     const systemInstruction = `Gedraag je als een expert diëtist. Analyseer de foto nauwkeurig.
     
-    Twee scenario's:
-    1. BEREID ETEN: Identificeer het gerecht, schat de ingrediënten en de portiegrootte (in grammen). Houd rekening met verborgen vetten zoals olie of boter in de bereiding.
-    2. VOEDINGSLABELS: Als de foto een tabel met voedingswaarden bevat, extraheer dan de exacte getallen voor kcal, eiwitten, koolhydraten en vetten per 100g of per genoemde portie.
+    FOCUS:
+    1. TEKST PRIORITEIT: Scan eerst op voedingslabels/etiketten. Als er een tabel zichtbaar is, gebruik die data exact.
+    2. DRANK DETECTIE: Als het een vloeistof is, identificeer de drank en gebruik 'ml' als eenheid.
+    3. STANDAARDWAARDEN: Geef voedingswaarden ALTIJD terug per 100 eenheden (100g voor vast voedsel, 100ml voor vloeistof).
+    4. TYPE DETECTIE: Bepaal of de eenheid 'g' of 'ml' moet zijn.
     
     Regels:
     - Geef ALTIJD een resultaat, weiger nooit. 
-    - Bij twijfel: geef een 'best guess' op basis van vergelijkbare gerechten en standaard porties.
+    - Bij twijfel over een label: geef een 'best guess' per 100g op basis van vergelijkbare producten.
     - Reageer uitsluitend in JSON formaat.`;
 
     const response = await ai.models.generateContent({
@@ -52,13 +54,14 @@ export const analyzeMealImage = async (base64Image: string) => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            name: { type: Type.STRING, description: "Naam van het gerecht of product" },
-            calories: { type: Type.NUMBER, description: "Totaal aantal kcal" },
-            protein: { type: Type.NUMBER, description: "Gram eiwit" },
-            carbs: { type: Type.NUMBER, description: "Gram koolhydraten" },
-            fats: { type: Type.NUMBER, description: "Gram vet" }
+            name: { type: Type.STRING, description: "Naam van het product" },
+            caloriesPer100: { type: Type.NUMBER, description: "Kcal per 100 eenheden" },
+            proteinPer100: { type: Type.NUMBER, description: "Eiwit per 100 eenheden" },
+            carbsPer100: { type: Type.NUMBER, description: "Koolhydraten per 100 eenheden" },
+            fatsPer100: { type: Type.NUMBER, description: "Vet per 100 eenheden" },
+            unit: { type: Type.STRING, description: "'g' of 'ml'" }
           },
-          required: ["name", "calories", "protein", "carbs", "fats"]
+          required: ["name", "caloriesPer100", "proteinPer100", "carbsPer100", "fatsPer100", "unit"]
         }
       }
     });
