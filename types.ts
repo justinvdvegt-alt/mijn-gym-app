@@ -29,6 +29,8 @@ export interface HealthStats {
   sleep: number; // hours
   calories: number;
   protein: number;
+  carbs_goal?: number;
+  fats_goal?: number;
   weight: number;
   height?: number; // cm
   age?: number;
@@ -46,7 +48,7 @@ export interface MealEntry {
   date: string;
 }
 
-export type TabType = 'dashboard' | 'gym' | 'cardio' | 'scanner' | 'health';
+export type TabType = 'dashboard' | 'gym' | 'cardio' | 'scanner' | 'health' | 'settings';
 
 export interface AppState {
   workouts: WorkoutSession[];

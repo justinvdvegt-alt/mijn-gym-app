@@ -7,6 +7,7 @@ import { GymModule } from './components/GymModule';
 import { CardioModule } from './components/CardioModule';
 import { HealthModule } from './components/HealthModule';
 import { ScannerModule } from './components/ScannerModule';
+import { SettingsModule } from './components/SettingsModule';
 import { handleStravaCallback } from './services/strava';
 
 const App: React.FC = () => {
@@ -102,7 +103,12 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-white font-body flex flex-col max-w-md mx-auto relative border-x border-slate-100 shadow-2xl">
       <main className="flex-1 overflow-y-auto">
-        {activeTab === 'dashboard' && <Dashboard state={dashboardState as any} />}
+        {activeTab === 'dashboard' && (
+            <Dashboard 
+                state={dashboardState as any} 
+                onOpenSettings={() => setActiveTab('settings')} 
+            />
+        )}
         {activeTab === 'gym' && (
           <GymModule 
             workouts={state.workouts} 
@@ -132,10 +138,17 @@ const App: React.FC = () => {
         {activeTab === 'health' && (
           <HealthModule onAdd={handleAddHealth} latest={getLatestHealth(state.healthHistory)} />
         )}
+        {activeTab === 'settings' && (
+            <SettingsModule 
+                latest={getLatestHealth(state.healthHistory)} 
+                onSave={handleAddHealth} 
+                onClose={() => setActiveTab('dashboard')} 
+            />
+        )}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center p-5 z-50 max-w-md mx-auto rounded-t-[40px] shadow-2xl">
-        <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon="🏠" label="Home" />
+        <TabButton active={activeTab === 'dashboard' || activeTab === 'settings'} onClick={() => setActiveTab('dashboard')} icon="🏠" label="Home" />
         <TabButton active={activeTab === 'gym'} onClick={() => setActiveTab('gym')} icon="🏋️" label="Gym" />
         <TabButton active={activeTab === 'scanner'} onClick={() => setActiveTab('scanner')} icon="📸" label="Scan" />
         <TabButton active={activeTab === 'cardio'} onClick={() => setActiveTab('cardio')} icon="🏃" label="Cardio" />
