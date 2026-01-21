@@ -3,347 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CyberFit Ecosystem - All-in-One</title>
-    
-    <!-- Scripts & Styles -->
+    <title>CyberFit - All-in-One Fitness</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Babel for JSX transformation in-browser -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- ESM Import Map for modern module loading -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "recharts": "https://esm.sh/recharts@2.12.0",
-    "@google/genai": "https://esm.sh/@google/genai@1.38.0",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+    "recharts": "https://esm.sh/recharts@2.12.0?external=react,react-dom",
+    "@google/genai": "https://esm.sh/@google/genai@1.38.0"
   }
 }
 </script>
-
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: { 50: '#f0f7ff', 100: '#e0effe', 200: '#bae0fd', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 900: '#0c4a6e' },
-                        background: '#f8fafc'
+                        brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 900: '#0c4a6e' },
+                        strava: '#FC4C02'
                     },
                     fontFamily: { heading: ['Outfit', 'sans-serif'], body: ['Inter', 'sans-serif'] }
                 }
             }
         }
     </script>
-
     <style>
-        body { background-color: #f8fafc; color: #0f172a; font-family: 'Inter', sans-serif; overflow-x: hidden; }
-        .active-tab-glow { position: relative; }
-        .active-tab-glow::after {
-            content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
-            width: 4px; height: 4px; background: #0ea5e9; border-radius: 50%; box-shadow: 0 0 8px #0ea5e9;
-        }
-        .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border-top: 1px solid rgba(226, 232, 240, 0.5); }
+        body { background-color: #f8fafc; color: #0f172a; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass-nav { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); border-top: 1px solid rgba(226, 232, 240, 0.5); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        .animate-pulse-soft { animation: pulse-soft 2s infinite ease-in-out; }
+        @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
     </style>
 </head>
-<body class="flex justify-center">
-    <div id="root" class="w-full max-w-md min-h-screen bg-background relative shadow-2xl"></div>
-
-    <script type="text/babel" data-type="module">
-        import React, { useState, useEffect, useMemo, useRef } from 'react';
-        import ReactDOM from 'react-dom/client';
-        import { 
-            AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line 
-        } from 'recharts';
-        import { GoogleGenAI } from "@google/genai";
-
-        // --- CONFIGURATION ---
-        const GEMINI_API_KEY = process.env.API_KEY || 'AIzaSyADfEfCXxG4fzMQYeXBDiiKp27YeJ5odXM';
-        const STRAVA_CLIENT_ID = '197251';
-        const STRAVA_CLIENT_SECRET = '1804f8f58f54354fddc9ee5e6180912e66d2f376';
-        const REDIRECT_URI = window.location.origin + window.location.pathname;
-        const STORAGE_KEY = 'cyberfit_v_github_final_v2';
-
-        // --- CORE SERVICES ---
-        const aiService = {
-            async getInsights(state) {
-                const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-                const context = `Workouts: ${state.workouts.length}, Maaltijden: ${state.mealHistory.length}`;
-                try {
-                    const res = await ai.models.generateContent({
-                        model: 'gemini-3-flash-preview',
-                        contents: `Analyseer deze fitness data: ${context}. Geef 3 korte, motiverende tips in het Nederlands.`
-                    });
-                    return res.text || "Blijf consistent!";
-                } catch { return "Focus op je proces, resultaten volgen."; }
-            },
-            async scanMeal(base64) {
-                const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-                try {
-                    const res = await ai.models.generateContent({
-                        model: 'gemini-3-flash-preview',
-                        contents: {
-                            parts: [
-                                { text: "Analyseer deze maaltijd. Geef alleen JSON: {name, calories, protein, carbs, fats, fiber}" },
-                                { inlineData: { mimeType: 'image/jpeg', data: base64.split(',')[1] } }
-                            ]
-                        },
-                        config: { responseMimeType: "application/json" }
-                    });
-                    return JSON.parse(res.text || '{}');
-                } catch (e) { throw e; }
-            }
-        };
-
-        const stravaService = {
-            connect() {
-                const params = new URLSearchParams({
-                    client_id: STRAVA_CLIENT_ID,
-                    redirect_uri: REDIRECT_URI,
-                    response_type: 'code',
-                    approval_prompt: 'auto',
-                    scope: 'read,activity:read_all'
-                });
-                window.location.href = `https://www.strava.com/oauth/authorize?${params.toString()}`;
-            },
-            async exchangeToken(code) {
-                const res = await fetch('https://www.strava.com/oauth/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ client_id: STRAVA_CLIENT_ID, client_secret: STRAVA_CLIENT_SECRET, code, grant_type: 'authorization_code' })
-                });
-                const data = await res.json();
-                localStorage.setItem('strava_tokens', JSON.stringify(data));
-                return data;
-            }
-        };
-
-        // --- COMPONENTS ---
-        const NavBtn = ({ icon, label, active, onClick }) => (
-            <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all ${active ? 'text-brand-600 active-tab-glow scale-110' : 'text-slate-400 opacity-60'}`}>
-                <span className="text-xl">{icon}</span>
-                <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
-            </button>
-        );
-
-        const Card = ({ children, className = "" }) => (
-            <div className={`bg-white rounded-[32px] border border-slate-100 shadow-sm p-5 ${className}`}>{children}</div>
-        );
-
-        // --- VIEWS ---
-        const Dashboard = ({ state }) => {
-            const [insights, setInsights] = useState('Analyseert data...');
-            useEffect(() => { aiService.getInsights(state).then(setInsights); }, [state]);
-
-            const chartData = useMemo(() => state.healthHistory.slice(-7).map(h => ({
-                name: new Date(h.date).toLocaleDateString('nl-NL', { day: '2-digit' }),
-                weight: h.weight
-            })), [state.healthHistory]);
-
-            return (
-                <div className="p-6 space-y-6 pb-28">
-                    <h1 className="text-3xl font-heading font-bold">Overzicht</h1>
-                    <div className="bg-gradient-to-br from-brand-600 to-brand-700 p-6 rounded-[32px] text-white shadow-xl relative overflow-hidden">
-                        <p className="text-sm italic">"{insights}"</p>
-                    </div>
-                    <Card>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Gewichtsverloop</h3>
-                        <div className="h-48 w-full">
-                            {chartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={chartData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="name" hide />
-                                        <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
-                                        <Tooltip />
-                                        <Area type="monotone" dataKey="weight" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.1} strokeWidth={3} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-slate-300 text-xs italic">Nog geen gewichtsdata</div>
-                            )}
-                        </div>
-                    </Card>
-                </div>
-            );
-        };
-
-        const Gym = ({ state, onAddSet, onStart, onFinish }) => {
-            const [exercise, setExercise] = useState('');
-            const [weight, setWeight] = useState('');
-            const [reps, setReps] = useState('');
-            const activeSession = state.workouts.find(w => !w.isCompleted);
-
-            return (
-                <div className="p-6 space-y-6 pb-28">
-                    <h2 className="text-2xl font-heading font-bold">Gym Tracker</h2>
-                    {!activeSession ? (
-                        <Card className="text-center py-10 space-y-4">
-                            <p className="font-bold">Klaar voor je training?</p>
-                            <button onClick={() => onStart("Sessie")} className="w-full bg-slate-900 text-white p-5 rounded-3xl font-bold">Start Sessie</button>
-                        </Card>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="bg-brand-600 p-4 rounded-2xl text-white flex justify-between items-center">
-                                <span className="font-bold">{activeSession.label}</span>
-                                <button onClick={() => onFinish(activeSession.id)} className="text-xs font-bold uppercase bg-white/20 px-3 py-1 rounded-lg">Stop</button>
-                            </div>
-                            <input value={exercise} onChange={e => setExercise(e.target.value)} placeholder="Oefening..." className="w-full p-4 rounded-2xl border border-slate-200" />
-                            <div className="grid grid-cols-2 gap-4">
-                                <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="KG" className="p-4 rounded-2xl border border-slate-200 text-center text-xl font-bold" />
-                                <input type="number" value={reps} onChange={e => setReps(e.target.value)} placeholder="Reps" className="p-4 rounded-2xl border border-slate-200 text-center text-xl font-bold" />
-                            </div>
-                            <button onClick={() => {if(!exercise || !weight || !reps) return; onAddSet(activeSession.id, {id: crypto.randomUUID(), name: exercise, weight: Number(weight), reps: Number(reps), date: new Date().toISOString()}); setWeight(''); setReps('');}} className="w-full bg-slate-900 text-white p-5 rounded-2xl font-bold">Log Set</button>
-                            {activeSession.exercises.slice().reverse().map(e => (
-                                <div key={e.id} className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between shadow-sm">
-                                    <span className="font-bold">{e.name}</span>
-                                    <span className="text-brand-600 font-bold">{e.weight}kg x {e.reps}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        const Scanner = ({ onAdd, daily }) => {
-            const [loading, setLoading] = useState(false);
-            const [preview, setPreview] = useState(null);
-            const [result, setResult] = useState(null);
-            const inputRef = useRef();
-
-            const handleCapture = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    setPreview(reader.result);
-                    setLoading(true);
-                    try { const data = await aiService.scanMeal(reader.result); setResult(data); }
-                    catch { alert("Scan mislukt."); }
-                    finally { setLoading(false); }
-                };
-                reader.readAsDataURL(file);
-            };
-
-            return (
-                <div className="p-6 space-y-6 pb-28">
-                    <h2 className="text-2xl font-heading font-bold">Macro Scan</h2>
-                    <div className="bg-white p-5 rounded-3xl border border-slate-100 flex justify-around text-center">
-                        {['kcal', 'E', 'K', 'V'].map((l, i) => (
-                            <div key={l}><div className="text-[10px] text-slate-400 font-bold">{l}</div><div className="font-black">{Object.values(daily)[i]}</div></div>
-                        ))}
-                    </div>
-                    {!preview ? (
-                        <button onClick={() => inputRef.current.click()} className="w-full aspect-square bg-white border-2 border-dashed rounded-[48px] flex flex-col items-center justify-center gap-2">
-                            <span className="text-4xl">📸</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Maaltijd Scannen</span>
-                        </button>
-                    ) : (
-                        <div className="bg-white rounded-[40px] overflow-hidden border relative">
-                            <img src={preview} className="w-full aspect-square object-cover" />
-                            {loading ? (
-                                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center font-bold">AI Rekent...</div>
-                            ) : result && (
-                                <div className="p-6 space-y-4">
-                                    <h3 className="text-xl font-bold">{result.name}</h3>
-                                    <div className="text-3xl font-black text-brand-600">{result.calories} kcal</div>
-                                    <button onClick={() => {onAdd({id: crypto.randomUUID(), ...result, date: new Date().toISOString()}); setPreview(null); setResult(null);}} className="w-full bg-brand-600 text-white p-5 rounded-3xl font-bold">Toevoegen</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <input type="file" ref={inputRef} onChange={handleCapture} accept="image/*" capture="environment" className="hidden" />
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [state, setState] = useState(() => {
-                const data = localStorage.getItem(STORAGE_KEY);
-                return data ? JSON.parse(data) : { workouts: [], cardioHistory: [], healthHistory: [], mealHistory: [], stravaLinked: false };
-            });
-            const [tab, setTab] = useState('dashboard');
-
-            useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }, [state]);
-
-            useEffect(() => {
-                const code = new URLSearchParams(window.location.search).get('code');
-                if (code) {
-                    window.history.replaceState({}, '', window.location.pathname);
-                    stravaService.exchangeToken(code).then(() => { setState(s => ({...s, stravaLinked: true})); setTab('cardio'); });
-                }
-            }, []);
-
-            const dailyMacros = useMemo(() => {
-                const today = state.mealHistory.filter(m => new Date(m.date).toDateString() === new Date().toDateString());
-                return today.reduce((acc, m) => ({ 
-                    cal: acc.cal + m.calories, prot: acc.prot + m.protein, carbs: acc.carbs + m.carbs, fats: acc.fats + m.fats 
-                }), { cal: 0, prot: 0, carbs: 0, fats: 0 });
-            }, [state.mealHistory]);
-
-            return (
-                <div className="min-h-screen flex flex-col">
-                    <main className="flex-1 overflow-y-auto no-scrollbar">
-                        {tab === 'dashboard' && <Dashboard state={state} />}
-                        {tab === 'gym' && (
-                            <Gym state={state} 
-                                onStart={l => setState(s => ({...s, workouts: [...s.workouts, {id: crypto.randomUUID(), date: new Date().toISOString(), label: l, exercises: [], isCompleted: false}]}))}
-                                onAddSet={(sid, set) => setState(s => ({...s, workouts: s.workouts.map(w => w.id === sid ? {...w, exercises: [...w.exercises, set]} : w)}))}
-                                onFinish={sid => setState(s => ({...s, workouts: s.workouts.map(w => w.id === sid ? {...w, isCompleted: true} : w)}))}
-                            />
-                        )}
-                        {tab === 'scanner' && <Scanner onAdd={m => setState(s => ({...s, mealHistory: [m, ...s.mealHistory]}))} daily={dailyMacros} />}
-                        {tab === 'cardio' && (
-                            <div className="p-6 space-y-6">
-                                <h2 className="text-2xl font-bold">Cardio Sync</h2>
-                                <button onClick={() => stravaService.connect()} className={`w-full p-6 rounded-[32px] font-bold flex items-center justify-center gap-3 ${state.stravaLinked ? 'bg-slate-900' : 'bg-[#FC4C02]'} text-white`}>
-                                    {state.stravaLinked ? 'Gekoppeld aan Strava' : 'Koppel Strava'}
-                                </button>
-                                {state.cardioHistory.map(c => (
-                                    <Card key={c.id} className="flex justify-between items-center">
-                                        <div className="font-bold">{c.distance} km</div>
-                                        <div className="text-[10px] text-slate-400 font-bold uppercase">{c.duration} min</div>
-                                    </Card>
-                                ))}
-                            </div>
-                        )}
-                        {tab === 'health' && (
-                            <div className="p-6 space-y-6">
-                                <h2 className="text-2xl font-bold">Biometrie</h2>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {['Gewicht', 'Slaap', 'Kcal Doel', 'Eiwit Doel'].map(l => (
-                                        <div key={l} className="bg-white p-5 rounded-3xl border">
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase mb-2">{l}</div>
-                                            <input type="number" className="w-full text-2xl font-bold outline-none" placeholder="0" />
-                                        </div>
-                                    ))}
-                                </div>
-                                <button className="w-full bg-slate-900 text-white p-5 rounded-2xl font-bold" onClick={() => alert("Nog niet geïmplementeerd")}>Update Stats</button>
-                            </div>
-                        )}
-                    </main>
-                    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md glass-nav flex justify-around items-center p-5 z-50 rounded-t-[48px]">
-                        <NavBtn icon="🏠" label="Home" active={tab === 'dashboard'} onClick={() => setTab('dashboard')} />
-                        <NavBtn icon="🏋️" label="Gym" active={tab === 'gym'} onClick={() => setTab('gym')} />
-                        <NavBtn icon="📸" label="Scan" active={tab === 'scanner'} onClick={() => setTab('scanner')} />
-                        <NavBtn icon="🏃" label="Cardio" active={tab === 'cardio'} onClick={() => setTab('cardio')} />
-                        <NavBtn icon="👤" label="Profiel" active={tab === 'health'} onClick={() => setTab('health')} />
-                    </nav>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+<body class="flex justify-center overflow-x-hidden">
+    <div id="root" class="w-full max-w-md min-h-screen bg-white relative shadow-2xl flex flex-col"></div>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

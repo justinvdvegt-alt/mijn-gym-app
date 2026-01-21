@@ -1,0 +1,8 @@
+{
+  "name": "CyberFit Ecosystem",
+  "description": "High-performance AI fitness tracker with Strava and Gemini vision integration.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
