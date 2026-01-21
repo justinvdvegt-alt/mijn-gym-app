@@ -27,7 +27,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% kwaliteit JPEG
+        resolve(canvas.toDataURL('image/jpeg', 0.85)); // Iets hogere kwaliteit voor betere herkenning
       };
     });
   };
@@ -49,9 +49,9 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         const data = await analyzeMealImage(compressedBase64);
         setResult(data);
       } catch (err: any) {
-        console.error("Scan Error:", err);
-        setError("AI kon maaltijd niet herkennen. Probeer een duidelijkere foto.");
-        setPreview(null);
+        console.error("Scan Error Details:", err);
+        setError(err.message || "AI kon de maaltijd niet herkennen. Probeer een duidelijkere foto.");
+        // We houden de preview vast zodat de gebruiker kan zien wat er mis ging
       } finally {
         setLoading(false);
       }
@@ -79,7 +79,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     <div className="p-6 space-y-8 pb-24">
       <header>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Macro Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor instant macro's.</p>
+        <p className="text-sm text-slate-500 font-medium">Maak een foto van je bord voor instant macro's.</p>
       </header>
 
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
@@ -129,33 +129,47 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
               </div>
             )}
 
-            {result && !loading && (
+            {!loading && (
               <div className="p-6 space-y-6">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">{result.name}</h3>
-                  <p className="text-3xl font-bold text-slate-900 mt-1">{result.calories} <span className="text-sm font-normal text-slate-400">kcal</span></p>
-                </div>
+                {result ? (
+                  <>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">{result.name}</h3>
+                      <p className="text-3xl font-bold text-slate-900 mt-1">{result.calories} <span className="text-sm font-normal text-slate-400">kcal</span></p>
+                    </div>
 
-                <div className="space-y-3">
-                  <MacroRow label="Eiwitten" value={result.protein} color="bg-brand-500" unit="g" />
-                  <MacroRow label="Koolhydraten" value={result.carbs} color="bg-orange-500" unit="g" />
-                  <MacroRow label="Vetten" value={result.fats} color="bg-yellow-400" unit="g" />
-                </div>
+                    <div className="space-y-3">
+                      <MacroRow label="Eiwitten" value={result.protein} color="bg-brand-500" unit="g" />
+                      <MacroRow label="Koolhydraten" value={result.carbs} color="bg-orange-500" unit="g" />
+                      <MacroRow label="Vetten" value={result.fats} color="bg-yellow-400" unit="g" />
+                    </div>
 
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => { setPreview(null); setResult(null); }}
-                    className="flex-1 bg-slate-100 text-slate-600 font-bold p-4 rounded-2xl active:scale-95 transition-all"
-                  >
-                    Opnieuw
-                  </button>
-                  <button 
-                    onClick={handleConfirm}
-                    className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg active:scale-95 transition-all"
-                  >
-                    Toevoegen
-                  </button>
-                </div>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => { setPreview(null); setResult(null); setError(null); }}
+                        className="flex-1 bg-slate-100 text-slate-600 font-bold p-4 rounded-2xl active:scale-95 transition-all"
+                      >
+                        Annuleer
+                      </button>
+                      <button 
+                        onClick={handleConfirm}
+                        className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg active:scale-95 transition-all"
+                      >
+                        Toevoegen
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    <p className="text-sm text-slate-500 text-center font-medium">De scan is mislukt. Probeer het opnieuw met een scherpere foto.</p>
+                    <button 
+                      onClick={() => { setPreview(null); setResult(null); setError(null); }}
+                      className="w-full bg-slate-900 text-white font-bold p-4 rounded-2xl active:scale-95 transition-all"
+                    >
+                      Opnieuw Proberen
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -175,12 +189,12 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
 };
 
 const MacroRow = ({ label, value, color, unit }: any) => {
-  const width = Math.min(100, (value / 50) * 100);
+  const width = Math.min(100, ((value || 0) / 50) * 100);
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
         <span>{label}</span>
-        <span className="text-slate-900">{value}{unit}</span>
+        <span className="text-slate-900">{value || 0}{unit}</span>
       </div>
       <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${width}%` }}></div>

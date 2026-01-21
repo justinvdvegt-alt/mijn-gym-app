@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { HealthStats } from '../types';
 
 interface Props {
@@ -22,6 +23,20 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [height, setHeight] = useState(latest?.height?.toString() || '');
   const [age, setAge] = useState(latest?.age?.toString() || '');
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
+  const [saved, setSaved] = useState(false);
+
+  // Cruciaal voor persistence na refresh: synchroniseer lokale state als de prop 'latest' verandert
+  useEffect(() => {
+    if (latest) {
+      setSleep(latest.sleep?.toString() || '');
+      setCal(latest.calories?.toString() || '');
+      setProt(latest.protein?.toString() || '');
+      setWeight(latest.weight?.toString() || '');
+      setHeight(latest.height?.toString() || '');
+      setAge(latest.age?.toString() || '');
+      setGoal(latest.goal || GOALS[0]);
+    }
+  }, [latest]);
 
   const bmi = useMemo(() => {
     const w = parseFloat(weight);
@@ -51,11 +66,12 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
       age: parseInt(age) || 0,
       goal: goal
     });
-    alert("Stats bijgewerkt!");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:border-brand-200">
+    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500">
       <div className="flex items-center gap-2 mb-3">
           <span className="text-lg opacity-50">{icon}</span>
           <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider">{label}</label>
@@ -73,9 +89,16 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
 
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
-      <header>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bio Metrics</h2>
-        <p className="text-sm text-slate-500 font-medium">Data voor je AI Coach.</p>
+      <header className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bio Metrics</h2>
+          <p className="text-sm text-slate-500 font-medium">Je data wordt veilig opgeslagen.</p>
+        </div>
+        {saved && (
+          <div className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full animate-bounce">
+            GEGEVENS OPGESLAGEN!
+          </div>
+        )}
       </header>
       
       {bmi && (
@@ -88,7 +111,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
             <div className={`text-xs font-bold uppercase tracking-widest ${bmiCategory?.color}`}>
               {bmiCategory?.label}
             </div>
-            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight">Gebaseerd op je huidige stats.</div>
+            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Gebaseerd op je huidige stats.</div>
           </div>
         </div>
       )}
@@ -99,7 +122,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
           <select 
             value={goal} 
             onChange={(e) => setGoal(e.target.value)}
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none"
+            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-brand-500"
           >
             {GOALS.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
@@ -114,7 +137,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
             <InputField label="Eiwit (g)" value={prot} onChange={setProt} placeholder="0" icon="🍗" step="1" />
         </div>
         
-        <button type="submit" className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all">
+        <button type="submit" className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all hover:bg-brand-700">
           Sla Stats Op
         </button>
       </form>
