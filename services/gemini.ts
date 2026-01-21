@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
@@ -39,6 +38,7 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     });
     return response.text || "Voer data in voor een persoonlijk plan.";
   } catch (error) {
+    console.error("Gemini Insights Error:", error);
     return "AI Coach is momenteel aan het rusten.";
   }
 };
@@ -46,18 +46,14 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
 export const analyzeMealImage = async (base64Image: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
+  // Extraheer mimeType uit de base64 string
+  const mimeTypeMatch = base64Image.match(/^data:(image\/[a-z]+);base64,/);
+  const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+  const imageData = base64Image.split(',')[1];
+
   const prompt = `
-    Analyseer deze foto van een maaltijd. 
-    Schat de voedingswaarden zo nauwkeurig mogelijk in.
-    Reageer ALLEEN met een JSON object in dit formaat:
-    {
-      "name": "Naam van gerecht",
-      "calories": number,
-      "protein": number,
-      "carbs": number,
-      "fats": number,
-      "fiber": number
-    }
+    Analyseer deze foto van een maaltijd heel nauwkeurig. 
+    Schat de hoeveelheid calorieën en macro-nutriënten in op basis van de zichtbare porties.
   `;
 
   try {
@@ -66,19 +62,48 @@ export const analyzeMealImage = async (base64Image: string) => {
       contents: {
         parts: [
           { text: prompt },
-          { inlineData: { mimeType: 'image/jpeg', data: base64Image.split(',')[1] } }
+          { inlineData: { mimeType, data: imageData } }
         ]
       },
       config: {
         responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: {
+              type: Type.STRING,
+              description: "Een smakelijke naam voor het gedetecteerde gerecht.",
+            },
+            calories: {
+              type: Type.NUMBER,
+              description: "Totaal aantal kcal.",
+            },
+            protein: {
+              type: Type.NUMBER,
+              description: "Gram eiwit.",
+            },
+            carbs: {
+              type: Type.NUMBER,
+              description: "Gram koolhydraten.",
+            },
+            fats: {
+              type: Type.NUMBER,
+              description: "Gram vetten.",
+            },
+            fiber: {
+              type: Type.NUMBER,
+              description: "Gram vezels.",
+            }
+          },
+          required: ["name", "calories", "protein", "carbs", "fats"]
+        }
       }
     });
 
     const resultText = response.text?.trim() || '{}';
-    const result = JSON.parse(resultText);
-    return result;
+    return JSON.parse(resultText);
   } catch (error) {
-    console.error("Gemini Scan Error:", error);
+    console.error("Gemini Scan Detailed Error:", error);
     throw error;
   }
 };
