@@ -21,13 +21,13 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
       img.src = base64Str;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1024;
+        const MAX_WIDTH = 1200; // Iets groter voor meer detail
         const scale = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85)); // Iets hogere kwaliteit voor betere herkenning
+        resolve(canvas.toDataURL('image/jpeg', 0.9)); // Hogere kwaliteit JPEG
       };
     });
   };
@@ -49,9 +49,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         const data = await analyzeMealImage(compressedBase64);
         setResult(data);
       } catch (err: any) {
-        console.error("Scan Error Details:", err);
-        setError(err.message || "AI kon de maaltijd niet herkennen. Probeer een duidelijkere foto.");
-        // We houden de preview vast zodat de gebruiker kan zien wat er mis ging
+        setError(err.message || "Analyse mislukt. Probeer het opnieuw.");
       } finally {
         setLoading(false);
       }
@@ -63,7 +61,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     if (!result) return;
     onAdd({
       id: crypto.randomUUID(),
-      name: result.name || 'Gescande Maaltijd',
+      name: result.name || 'Maaltijd',
       calories: result.calories || 0,
       protein: result.protein || 0,
       carbs: result.carbs || 0,
@@ -76,114 +74,56 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
   };
 
   return (
-    <div className="p-6 space-y-8 pb-24">
+    <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Macro Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Maak een foto van je bord voor instant macro's.</p>
+        <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor instant resultaat.</p>
       </header>
 
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
-        <div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase">Kcal</div>
-          <div className="text-sm font-bold text-slate-900">{dailyTotal.cal}</div>
-        </div>
-        <div>
-          <div className="text-[10px] font-bold text-brand-500 uppercase">Eiwit</div>
-          <div className="text-sm font-bold text-slate-900">{dailyTotal.prot}g</div>
-        </div>
-        <div>
-          <div className="text-[10px] font-bold text-orange-500 uppercase">Koolh</div>
-          <div className="text-sm font-bold text-slate-900">{dailyTotal.carbs}g</div>
-        </div>
-        <div>
-          <div className="text-[10px] font-bold text-yellow-500 uppercase">Vet</div>
-          <div className="text-sm font-bold text-slate-900">{dailyTotal.fats}g</div>
-        </div>
+        <div><div className="text-[10px] font-bold text-slate-400 uppercase">Kcal</div><div className="text-sm font-bold text-slate-900">{dailyTotal.cal}</div></div>
+        <div><div className="text-[10px] font-bold text-brand-500 uppercase">Eiwit</div><div className="text-sm font-bold text-slate-900">{dailyTotal.prot}g</div></div>
+        <div><div className="text-[10px] font-bold text-orange-500 uppercase">Koolh</div><div className="text-sm font-bold text-slate-900">{dailyTotal.carbs}g</div></div>
+        <div><div className="text-[10px] font-bold text-yellow-500 uppercase">Vet</div><div className="text-sm font-bold text-slate-900">{dailyTotal.fats}g</div></div>
       </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl text-xs font-bold border border-red-100 animate-pulse">
-          ⚠️ {error}
-        </div>
-      )}
 
       <div className="space-y-4">
         {!preview ? (
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full aspect-square bg-white border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 hover:border-brand-500 transition-all active:scale-95"
-          >
-            <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            </div>
-            <span className="font-bold text-slate-500 uppercase tracking-widest text-xs">Scan Maaltijd</span>
+          <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-square bg-white border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 hover:border-brand-500 active:scale-95 transition-all">
+            <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center text-2xl">📸</div>
+            <span className="font-bold text-slate-500 uppercase tracking-widest text-xs">Foto maken</span>
           </button>
         ) : (
-          <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl relative animate-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl relative">
             <img src={preview} alt="Preview" className="w-full aspect-square object-cover" />
-            
             {loading && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
                 <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="font-bold text-slate-900 animate-pulse">AI Analyseert...</p>
+                <p className="font-bold text-slate-900 animate-pulse uppercase tracking-widest text-[10px]">AI analyseert...</p>
               </div>
             )}
-
-            {!loading && (
+            {result && !loading && (
               <div className="p-6 space-y-6">
-                {result ? (
-                  <>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">{result.name}</h3>
-                      <p className="text-3xl font-bold text-slate-900 mt-1">{result.calories} <span className="text-sm font-normal text-slate-400">kcal</span></p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <MacroRow label="Eiwitten" value={result.protein} color="bg-brand-500" unit="g" />
-                      <MacroRow label="Koolhydraten" value={result.carbs} color="bg-orange-500" unit="g" />
-                      <MacroRow label="Vetten" value={result.fats} color="bg-yellow-400" unit="g" />
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button 
-                        onClick={() => { setPreview(null); setResult(null); setError(null); }}
-                        className="flex-1 bg-slate-100 text-slate-600 font-bold p-4 rounded-2xl active:scale-95 transition-all"
-                      >
-                        Annuleer
-                      </button>
-                      <button 
-                        onClick={handleConfirm}
-                        className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg active:scale-95 transition-all"
-                      >
-                        Toevoegen
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    <p className="text-sm text-slate-500 text-center font-medium">De scan is mislukt. Probeer het opnieuw met een scherpere foto.</p>
-                    <button 
-                      onClick={() => { setPreview(null); setResult(null); setError(null); }}
-                      className="w-full bg-slate-900 text-white font-bold p-4 rounded-2xl active:scale-95 transition-all"
-                    >
-                      Opnieuw Proberen
-                    </button>
-                  </div>
-                )}
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">{result.name}</h3>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">{result.calories} <span className="text-sm font-normal text-slate-400">kcal</span></p>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => { setPreview(null); setResult(null); }} className="flex-1 bg-slate-100 text-slate-600 font-bold p-4 rounded-2xl active:scale-95 transition-all">Opnieuw</button>
+                  <button onClick={handleConfirm} className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg active:scale-95 transition-all">Toevoegen</button>
+                </div>
+              </div>
+            )}
+            {error && !loading && !result && (
+              <div className="p-6 text-center space-y-4">
+                <p className="text-red-600 text-sm font-bold">{error}</p>
+                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-4 rounded-2xl">Probeer Opnieuw</button>
               </div>
             )}
           </div>
         )}
       </div>
-
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        ref={fileInputRef} 
-        onChange={handleCapture} 
-        className="hidden" 
-      />
+      <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleCapture} className="hidden" />
     </div>
   );
 };

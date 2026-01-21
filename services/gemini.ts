@@ -18,11 +18,9 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
   ` : "Geen biometrie beschikbaar.";
 
   const prompt = `
-    Je bent een wereldklasse personal coach en voedingsdeskundige. Analyseer de volgende data en geef 3 uiterst concrete en motiverende actiepunten in het Nederlands.
+    Je bent een wereldklasse personal coach. Geef 3 uiterst concrete en motiverende actiepunten in het Nederlands op basis van deze data:
     ${bioContext}
-    Recente trainingen: ${gymContext}
-    Maaltijden vandaag: ${state.mealHistory.length}
-    Houd het kort, krachtig en to-the-point.
+    Training: ${gymContext}
   `;
 
   try {
@@ -30,10 +28,10 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text || "Begin met het loggen van je data voor persoonlijke AI-inzichten.";
+    return response.text || "Log je stats voor persoonlijke inzichten.";
   } catch (error) {
     console.error("Gemini Insights Error:", error);
-    return "De AI Coach analyseert momenteel je voortgang. Probeer het over een moment opnieuw.";
+    return "AI Coach is bezig met analyse. Probeer het over een moment opnieuw.";
   }
 };
 
@@ -44,13 +42,13 @@ export const analyzeMealImage = async (base64Image: string) => {
   const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
   const prompt = `
-    Je bent een expert in visuele voedingsanalyse. Bekijk de afbeelding van deze maaltijd.
-    Zelfs als de foto niet perfect is, doe je uiterste best om de ingrediënten en porties te schatten.
-    Schat de calorieën (kcal), eiwitten (g), koolhydraten (g) en vetten (g).
+    Je bent een expert voedingsanalist. Analyseer deze maaltijd. 
+    BELANGRIJK: Zelfs als de foto wazig of onduidelijk is, doe je best om te schatten wat er op het bord ligt. 
+    Geef NOOIT een foutmelding over de beeldkwaliteit, geef altijd je beste schatting.
     
-    ANTWOORD UITSLUITEND IN DIT JSON FORMAAT:
+    ANTWOORD ENKEL IN JSON:
     {
-      "name": "Naam van het gerecht",
+      "name": "Naam van de maaltijd",
       "calories": 0,
       "protein": 0,
       "carbs": 0,
@@ -84,12 +82,11 @@ export const analyzeMealImage = async (base64Image: string) => {
     });
 
     const resultText = response.text?.trim();
-    if (!resultText) throw new Error("Geen resultaat van AI");
-    
+    if (!resultText) throw new Error("Leeg resultaat");
     const cleanJson = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleanJson);
   } catch (error) {
     console.error("Gemini Scan Error:", error);
-    throw new Error("AI kon de maaltijd niet goed analyseren. Probeer een andere hoek of betere belichting.");
+    throw new Error("AI kon de foto niet direct herkennen. Probeer het opnieuw of pas de belichting aan.");
   }
 };

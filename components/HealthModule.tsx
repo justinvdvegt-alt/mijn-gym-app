@@ -15,6 +15,24 @@ const GOALS = [
   "Kracht Vergroten"
 ];
 
+// InputField BUITEN de component om focus-verlies te voorkomen
+const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
+  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-50">
+    <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg opacity-50">{icon}</span>
+        <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider">{label}</label>
+    </div>
+    <input 
+      type={type} 
+      step={step}
+      value={value} 
+      onChange={(e) => onChange(e.target.value)} 
+      placeholder={placeholder}
+      className="w-full bg-transparent text-3xl font-bold outline-none text-slate-900 placeholder-slate-200"
+    />
+  </div>
+);
+
 export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [sleep, setSleep] = useState(latest?.sleep?.toString() || '');
   const [cal, setCal] = useState(latest?.calories?.toString() || '');
@@ -25,7 +43,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
   const [saved, setSaved] = useState(false);
 
-  // Cruciaal voor persistence na refresh: synchroniseer lokale state als de prop 'latest' verandert
+  // Synchroniseer met opgeslagen data bij mount of verandering
   useEffect(() => {
     if (latest) {
       setSleep(latest.sleep?.toString() || '');
@@ -67,36 +85,19 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
       goal: goal
     });
     setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setTimeout(() => setSaved(false), 2000);
   };
-
-  const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500">
-      <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg opacity-50">{icon}</span>
-          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider">{label}</label>
-      </div>
-      <input 
-        type={type} 
-        step={step}
-        value={value} 
-        onChange={(e) => onChange(e.target.value)} 
-        placeholder={placeholder}
-        className="w-full bg-transparent text-3xl font-bold outline-none text-slate-900 placeholder-slate-200"
-      />
-    </div>
-  );
 
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bio Metrics</h2>
-          <p className="text-sm text-slate-500 font-medium">Je data wordt veilig opgeslagen.</p>
+          <p className="text-sm text-slate-500 font-medium">Data blijft bewaard na refresh.</p>
         </div>
         {saved && (
           <div className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full animate-bounce">
-            GEGEVENS OPGESLAGEN!
+            OPGESLAGEN!
           </div>
         )}
       </header>
@@ -111,7 +112,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
             <div className={`text-xs font-bold uppercase tracking-widest ${bmiCategory?.color}`}>
               {bmiCategory?.label}
             </div>
-            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Gebaseerd op je huidige stats.</div>
+            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Op basis van je huidige stats.</div>
           </div>
         </div>
       )}
@@ -137,8 +138,11 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
             <InputField label="Eiwit (g)" value={prot} onChange={setProt} placeholder="0" icon="🍗" step="1" />
         </div>
         
-        <button type="submit" className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all hover:bg-brand-700">
-          Sla Stats Op
+        <button 
+          type="submit" 
+          className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all hover:bg-brand-700 mt-4"
+        >
+          Gegevens Bevestigen
         </button>
       </form>
     </div>
