@@ -20,14 +20,29 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
       img.src = base64Str;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        // Verhoogde resolutie voor betere AI herkenning
-        const MAX_WIDTH = 1600; 
-        const scale = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scale;
+        // 1024px is de 'sweet spot' voor Gemini vision herkenning
+        const MAX_DIM = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85)); // Iets hogere kwaliteit
+        ctx?.drawImage(img, 0, 0, width, height);
+        // Gebruik 0.8 voor een goede balans tussen scherpte en bestandsgrootte
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
     });
   };
@@ -49,6 +64,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         const data = await analyzeMealImage(compressedBase64);
         setResult(data);
       } catch (err: any) {
+        // Toon de specifieke foutmelding
         setError(err.message || "Analyse mislukt.");
       } finally {
         setLoading(false);
@@ -58,7 +74,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
   };
 
   const handleConfirm = () => {
-    if (!result || (!result.calories && result.calories !== 0)) return;
+    if (!result || result.calories === undefined) return;
     onAdd({
       id: crypto.randomUUID(),
       name: result.name || 'Maaltijd',
@@ -79,7 +95,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Food Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor directe macro's.</p>
+        <p className="text-sm text-slate-500 font-medium">Maak een foto van je bord.</p>
       </header>
 
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
@@ -96,7 +112,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
             className="w-full aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] flex flex-col items-center justify-center gap-4 hover:border-brand-500 active:scale-95 transition-all"
           >
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-3xl shadow-sm">📸</div>
-            <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Open Camera</span>
+            <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Maak Foto</span>
           </button>
         ) : (
           <div className="bg-white rounded-[40px] overflow-hidden border border-slate-100 shadow-2xl relative">
@@ -105,7 +121,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
             {loading && (
               <div className="absolute inset-0 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center gap-4">
                 <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="font-black text-slate-900 animate-pulse uppercase tracking-[0.2em] text-[10px]">AI analyseert...</p>
+                <p className="font-black text-slate-900 animate-pulse uppercase tracking-[0.2em] text-[10px]">AI denkt na...</p>
               </div>
             )}
 
@@ -116,7 +132,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                   {isLikelyFood ? (
                     <p className="text-4xl font-black text-brand-600 mt-2">{result.calories} <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">kcal</span></p>
                   ) : (
-                    <p className="text-sm font-bold text-orange-500 mt-2 uppercase tracking-widest">Geen voedingswaarden herkend</p>
+                    <p className="text-sm font-bold text-orange-500 mt-2 uppercase tracking-widest">Geen voedingswaarden</p>
                   )}
                 </div>
 
@@ -144,7 +160,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                     onClick={handleConfirm} 
                     className={`flex-[2] font-black p-5 rounded-2xl shadow-lg active:scale-95 transition-all ${isLikelyFood ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                   >
-                    Opslaan
+                    Bevestigen
                   </button>
                 </div>
               </div>
@@ -152,8 +168,8 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
 
             {error && !loading && (
               <div className="p-8 text-center space-y-6">
-                <div className="text-4xl">⚠️</div>
-                <p className="text-slate-600 font-bold leading-relaxed">{error}</p>
+                <div className="text-4xl">❌</div>
+                <p className="text-red-600 font-bold leading-relaxed">{error}</p>
                 <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl">Probeer Opnieuw</button>
               </div>
             )}

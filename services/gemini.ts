@@ -17,7 +17,7 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     ` : "Geen biometrie beschikbaar.";
 
     const prompt = `
-      Je bent een wereldklasse personal coach. Geef 3 uiterst concrete en motiverende actiepunten in het Nederlands op basis van deze data:
+      Je bent een personal coach. Geef 3 uiterst concrete actiepunten in het Nederlands op basis van deze data:
       ${bioContext}
       Training: ${gymContext}
     `;
@@ -26,39 +26,26 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text || "Begin met het loggen van je stats voor persoonlijke inzichten.";
+    return response.text || "Log meer data voor persoonlijke inzichten.";
   } catch (error: any) {
     console.error("Gemini Insights Error:", error);
-    return "De AI Coach is bezig met je analyse. Voeg meer data toe!";
+    return "AI Coach tijdelijk niet beschikbaar.";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key niet gevonden. Controleer de instellingen in Vercel.");
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("Systeemfout: API Key ontbreekt.");
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const imageData = base64Image.split(',')[1];
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
-    const prompt = `
-      Je bent een expert voedingsdeskundige. Analyseer deze foto grondig.
-      Zelfs als de foto niet perfect scherp is of van een afstand is genomen, doe je uiterste best om te herkennen wat er op staat.
-      
-      Als het eten is: Geef de specifieke naam en een realistische schatting van kcal, eiwit, koolhydraten en vetten per portie.
-      Als het GEEN eten is: Geef bij 'name' aan wat het wel is (bijv. "Een toetsenbord"), maar zet de voedingswaarden op 0.
-      
-      ANTWOORD ALTIJD STRIKT IN DIT JSON FORMAAT:
-      {
-        "name": "Naam van het gerecht",
-        "calories": 500,
-        "protein": 30,
-        "carbs": 50,
-        "fats": 20
-      }
-    `;
+    // Simpele, dwingende prompt
+    const prompt = "Identificeer het eten op de foto. Schat de calorieën en macro's per portie. Als het geen eten is, noem het object maar zet de waarden op 0.";
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -84,12 +71,13 @@ export const analyzeMealImage = async (base64Image: string) => {
       }
     });
 
-    const resultText = response.text?.trim();
-    if (!resultText) throw new Error("Geen resultaat van de AI.");
+    const resultText = response.text;
+    if (!resultText) throw new Error("De AI gaf een leeg antwoord.");
     
     return JSON.parse(resultText);
   } catch (error: any) {
-    console.error("Gemini Scan Error:", error);
-    throw new Error("De AI kon de maaltijd niet herkennen. Probeer een foto van iets dichterbij met meer licht.");
+    console.error("Gemini Analyze Error:", error);
+    // Geef de echte foutmelding door voor debugging
+    throw new Error(error.message || "De AI kon de foto niet verwerken.");
   }
 };
