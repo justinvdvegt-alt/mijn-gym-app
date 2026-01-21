@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { HealthStats } from '../types';
 
@@ -14,7 +15,6 @@ const GOALS = [
   "Kracht Vergroten"
 ];
 
-// InputField BUITEN de component definitie om focus-verlies te voorkomen bij re-renders
 const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-50">
     <div className="flex items-center gap-2 mb-3">
@@ -34,20 +34,15 @@ const InputField = ({ label, value, onChange, placeholder, icon, type = "number"
 
 export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [sleep, setSleep] = useState(latest?.sleep?.toString() || '');
-  const [cal, setCal] = useState(latest?.calories?.toString() || '');
-  const [prot, setProt] = useState(latest?.protein?.toString() || '');
   const [weight, setWeight] = useState(latest?.weight?.toString() || '');
   const [height, setHeight] = useState(latest?.height?.toString() || '');
   const [age, setAge] = useState(latest?.age?.toString() || '');
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
   const [saved, setSaved] = useState(false);
 
-  // Alleen synchroniseren als de data van buitenaf echt verandert (bijv. na mount)
   useEffect(() => {
     if (latest && !weight && !height) { 
       setSleep(latest.sleep?.toString() || '');
-      setCal(latest.calories?.toString() || '');
-      setProt(latest.protein?.toString() || '');
       setWeight(latest.weight?.toString() || '');
       setHeight(latest.height?.toString() || '');
       setAge(latest.age?.toString() || '');
@@ -76,8 +71,10 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
     onAdd({
       date: new Date().toISOString(),
       sleep: parseFloat(sleep) || 0,
-      calories: parseInt(cal) || 0,
-      protein: parseInt(prot) || 0,
+      calories: latest?.calories || 2500, // Behoud bestaand doel uit profiel
+      protein: latest?.protein || 180,    // Behoud bestaand doel uit profiel
+      carbs_goal: latest?.carbs_goal || 250,
+      fats_goal: latest?.fats_goal || 70,
       weight: parseFloat(weight) || 0,
       height: parseFloat(height) || 0,
       age: parseInt(age) || 0,
@@ -91,12 +88,12 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Mijn Stats</h2>
-          <p className="text-sm text-slate-500 font-medium">Bewaard in je profiel.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Mijn Lichaam</h2>
+          <p className="text-sm text-slate-500 font-medium">Huidige metingen en stats.</p>
         </div>
         {saved && (
           <div className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full animate-bounce">
-            OPGESLAGEN!
+            CHECK!
           </div>
         )}
       </header>
@@ -117,7 +114,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-3 block">Huidig Doel</label>
+          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-3 block">Focus</label>
           <select 
             value={goal} 
             onChange={(e) => setGoal(e.target.value)}
@@ -128,19 +125,17 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-            <InputField label="Lengte (cm)" value={height} onChange={setHeight} placeholder="0" icon="📏" step="1" />
-            <InputField label="Leeftijd" value={age} onChange={setAge} placeholder="0" icon="🎂" step="1" />
             <InputField label="Gewicht (kg)" value={weight} onChange={setWeight} placeholder="0.0" icon="⚖️" />
             <InputField label="Slaap (u)" value={sleep} onChange={setSleep} placeholder="0.0" icon="🌙" />
-            <InputField label="Kcal Doel" value={cal} onChange={setCal} placeholder="0" icon="🔥" step="1" />
-            <InputField label="Eiwit (g)" value={prot} onChange={setProt} placeholder="0" icon="🍗" step="1" />
+            <InputField label="Lengte (cm)" value={height} onChange={setHeight} placeholder="0" icon="📏" step="1" />
+            <InputField label="Leeftijd" value={age} onChange={setAge} placeholder="0" icon="🎂" step="1" />
         </div>
         
         <button 
           type="submit" 
-          className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all hover:bg-brand-700 mt-4"
+          className="w-full bg-slate-900 text-white font-bold p-5 text-lg rounded-2xl shadow-lg active:scale-95 transition-all mt-4 uppercase tracking-widest text-sm"
         >
-          Opslaan (of druk op Enter)
+          Metingen Opslaan
         </button>
       </form>
     </div>

@@ -95,6 +95,8 @@ const App: React.FC = () => {
     }), { cal: 0, prot: 0, carbs: 0, fats: 0 });
   }, [state.mealHistory]);
 
+  const latestHealth = useMemo(() => getLatestHealth(state.healthHistory), [state.healthHistory]);
+
   const dashboardState = useMemo(() => {
     const gymHistory = state.workouts.flatMap(w => w.exercises);
     return { ...state, gymHistory };
@@ -133,14 +135,15 @@ const App: React.FC = () => {
             onDelete={handleDeleteMeal}
             dailyTotal={dailyTotal} 
             mealHistory={state.mealHistory}
+            goalCal={latestHealth?.calories}
           />
         )}
         {activeTab === 'health' && (
-          <HealthModule onAdd={handleAddHealth} latest={getLatestHealth(state.healthHistory)} />
+          <HealthModule onAdd={handleAddHealth} latest={latestHealth} />
         )}
         {activeTab === 'settings' && (
             <SettingsModule 
-                latest={getLatestHealth(state.healthHistory)} 
+                latest={latestHealth} 
                 onSave={handleAddHealth} 
                 onClose={() => setActiveTab('dashboard')} 
             />

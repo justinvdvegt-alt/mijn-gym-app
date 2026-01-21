@@ -9,6 +9,7 @@ interface Props {
   onDelete: (id: string) => void;
   dailyTotal: { cal: number, prot: number, carbs: number, fats: number };
   mealHistory: MealEntry[];
+  goalCal?: number;
 }
 
 interface AIResult {
@@ -20,7 +21,7 @@ interface AIResult {
   vet_100: number;
 }
 
-export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, mealHistory }) => {
+export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, mealHistory, goalCal = 2500 }) => {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,12 +115,15 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
     <div className="p-6 space-y-8 pb-32 animate-slide-up">
       <header>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight">AI Food Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Extractie per 100g/ml met live calculator.</p>
+        <p className="text-sm text-slate-500 font-medium">Extraheer voedingswaarden live uit foto's.</p>
       </header>
 
       {/* Progress Dashboard */}
       <div className="bg-slate-900 p-6 rounded-[32px] text-white shadow-xl grid grid-cols-4 gap-4 text-center">
-        <StatItem label="Kcal" val={dailyTotal.cal} />
+        <div className="space-y-1">
+          <div className="text-[10px] font-black text-brand-400 uppercase">Kcal / Doel</div>
+          <div className="text-lg font-black">{dailyTotal.cal} <span className="text-[10px] opacity-40">/ {goalCal}</span></div>
+        </div>
         <StatItem label="🥩 Eiwit" val={`${dailyTotal.prot}g`} />
         <StatItem label="🍞 Koolh" val={`${dailyTotal.carbs}g`} />
         <StatItem label="🥑 Vet" val={`${dailyTotal.fats}g`} />

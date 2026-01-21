@@ -46,15 +46,17 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
     weight: h.weight
   })).slice(-7);
 
-  const goals = {
+  // Gebruik de doelen uit HealthStats (gezet via Settings) of de standaardwaarden
+  const goals = useMemo(() => ({
     cal: latestHealth?.calories || 2500,
     prot: latestHealth?.protein || 180,
-    carbs: latestHealth?.carbs_goal || Math.round((latestHealth?.calories || 2500) * 0.4 / 4),
-    fats: latestHealth?.fats_goal || Math.round((latestHealth?.calories || 2500) * 0.25 / 9)
-  };
+    carbs: latestHealth?.carbs_goal || 250,
+    fats: latestHealth?.fats_goal || 70
+  }), [latestHealth]);
 
   const caloriesRemaining = goals.cal - dailyTotals.cal;
-  const calColor = caloriesRemaining < 0 ? 'text-red-500' : 'text-slate-900';
+  const isOverLimit = caloriesRemaining < 0;
+  const calColor = isOverLimit ? 'text-red-500' : 'text-slate-900';
 
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
@@ -74,16 +76,21 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
       {/* Daily Progress - Detailed Macro View */}
       <section className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm space-y-6">
         <div className="flex justify-between items-end">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Dagelijkse Energie</h3>
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kcal Doel: {goals.cal}</h3>
+            <div className="text-sm font-bold text-slate-600">
+               {dailyTotals.cal} <span className="text-slate-300">/</span> {goals.cal} kcal
+            </div>
+          </div>
           <div className="text-right">
             <span className={`text-3xl font-black ${calColor}`}>{Math.abs(caloriesRemaining)}</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase ml-2">{caloriesRemaining < 0 ? 'kcal over limiet' : 'kcal over'}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase ml-2">{isOverLimit ? 'kcal te veel' : 'kcal over'}</span>
           </div>
         </div>
         
         <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
           <div 
-            className={`h-full transition-all duration-1000 ${dailyTotals.cal > goals.cal ? 'bg-red-500' : 'bg-brand-500'}`} 
+            className={`h-full transition-all duration-1000 ${isOverLimit ? 'bg-red-500' : 'bg-brand-500'}`} 
             style={{ width: `${Math.min((dailyTotals.cal / goals.cal) * 100, 100)}%` }}
           ></div>
         </div>
