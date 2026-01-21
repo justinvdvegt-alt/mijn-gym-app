@@ -1,51 +1,48 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API-sleutel niet geconfigureerd in de omgeving.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 export const getAIInsights = async (state: AppState): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAIClient();
     const latestHealth: HealthStats | undefined = state.healthHistory[state.healthHistory.length - 1];
     const workouts = state.workouts || [];
     const gymContext = workouts.slice(-5).map(w => `${w.label}: ${w.exercises.length} sets`).join('\n');
     
     const bioContext = latestHealth ? `
-      Gebruiker Profiel:
-      - Gewicht: ${latestHealth.weight}kg
-      - Doel: ${latestHealth.goal}
-      - Leeftijd: ${latestHealth.age}
-      - Lengte: ${latestHealth.height}cm
-    ` : "Geen biometrie beschikbaar.";
+      Gebruiker: ${latestHealth.weight}kg, Doel: ${latestHealth.goal}, ${latestHealth.age} jaar.
+    ` : "";
 
-    const prompt = `
-      Je bent een personal coach. Geef 3 uiterst concrete actiepunten in het Nederlands op basis van deze data:
-      ${bioContext}
-      Training: ${gymContext}
-    `;
+    const prompt = `Geef 3 korte fitness tips in het Nederlands: ${bioContext} Trainingen: ${gymContext}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text || "Log meer data voor persoonlijke inzichten.";
+    return response.text || "Log data voor tips.";
   } catch (error: any) {
-    console.error("Gemini Insights Error:", error);
-    return "AI Coach tijdelijk niet beschikbaar.";
+    console.error("AI Insights Error:", error);
+    return "AI Coach is even offline.";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("Systeemfout: API Key ontbreekt.");
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getAIClient();
     const imageData = base64Image.split(',')[1];
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
-    // Simpele, dwingende prompt
-    const prompt = "Identificeer het eten op de foto. Schat de calorieën en macro's per portie. Als het geen eten is, noem het object maar zet de waarden op 0.";
+    const prompt = `
+      Analyseer dit eten. Geef ALTIJD een JSON schatting terug, zelfs bij matige kwaliteit.
+      JSON: { "name": string, "calories": number, "protein": number, "carbs": number, "fats": number }
+    `;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -72,12 +69,14 @@ export const analyzeMealImage = async (base64Image: string) => {
     });
 
     const resultText = response.text;
-    if (!resultText) throw new Error("De AI gaf een leeg antwoord.");
+    if (!resultText) throw new Error("Leeg antwoord van de AI.");
     
     return JSON.parse(resultText);
   } catch (error: any) {
-    console.error("Gemini Analyze Error:", error);
-    // Geef de echte foutmelding door voor debugging
-    throw new Error(error.message || "De AI kon de foto niet verwerken.");
+    console.error("Meal Analysis Error:", error);
+    if (error.message?.includes('leaked')) {
+      throw new Error("De API-sleutel is geblokkeerd door Google wegens een lek. Neem contact op met de beheerder.");
+    }
+    throw new Error(error.message || "De AI kon de maaltijd niet herkennen.");
   }
 };

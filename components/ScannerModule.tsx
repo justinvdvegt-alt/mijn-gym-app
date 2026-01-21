@@ -20,7 +20,6 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
       img.src = base64Str;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        // 1024px is de 'sweet spot' voor Gemini vision herkenning
         const MAX_DIM = 1024;
         let width = img.width;
         let height = img.height;
@@ -41,7 +40,6 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        // Gebruik 0.8 voor een goede balans tussen scherpte en bestandsgrootte
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
     });
@@ -64,8 +62,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         const data = await analyzeMealImage(compressedBase64);
         setResult(data);
       } catch (err: any) {
-        // Toon de specifieke foutmelding
-        setError(err.message || "Analyse mislukt.");
+        setError(err.message || "Er is iets misgegaan bij het verbinden met de AI.");
       } finally {
         setLoading(false);
       }
@@ -89,7 +86,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     setResult(null);
   };
 
-  const isLikelyFood = result && (result.calories || 0) > 0;
+  const isLikelyFood = result && (result.calories !== undefined);
 
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
@@ -129,11 +126,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
               <div className="p-8 space-y-6">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 leading-tight">{result.name}</h3>
-                  {isLikelyFood ? (
-                    <p className="text-4xl font-black text-brand-600 mt-2">{result.calories} <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">kcal</span></p>
-                  ) : (
-                    <p className="text-sm font-bold text-orange-500 mt-2 uppercase tracking-widest">Geen voedingswaarden</p>
-                  )}
+                  <p className="text-4xl font-black text-brand-600 mt-2">{result.calories} <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">kcal</span></p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 border-y border-slate-50 py-6">
@@ -156,9 +149,8 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                     Reset
                   </button>
                   <button 
-                    disabled={!isLikelyFood}
                     onClick={handleConfirm} 
-                    className={`flex-[2] font-black p-5 rounded-2xl shadow-lg active:scale-95 transition-all ${isLikelyFood ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                    className="flex-[2] bg-brand-600 text-white font-black p-5 rounded-2xl shadow-lg active:scale-95 transition-all"
                   >
                     Bevestigen
                   </button>
@@ -168,8 +160,11 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
 
             {error && !loading && (
               <div className="p-8 text-center space-y-6">
-                <div className="text-4xl">❌</div>
-                <p className="text-red-600 font-bold leading-relaxed">{error}</p>
+                <div className="text-4xl">⚠️</div>
+                <p className="text-red-600 text-sm font-bold leading-relaxed">{error}</p>
+                <div className="p-3 bg-slate-50 rounded-xl text-[10px] text-slate-400 font-mono break-all">
+                  Controleer of de API Key in Vercel correct is ingesteld.
+                </div>
                 <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl">Probeer Opnieuw</button>
               </div>
             )}
