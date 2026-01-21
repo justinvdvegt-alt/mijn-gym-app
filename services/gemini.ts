@@ -29,27 +29,34 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     return response.text || "Begin met het loggen van je stats voor persoonlijke inzichten.";
   } catch (error: any) {
     console.error("Gemini Insights Error:", error);
-    return "De AI Coach is bezig met je analyse. Voeg meer trainingen toe!";
+    return "De AI Coach is bezig met je analyse. Voeg meer data toe!";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
+  if (!process.env.API_KEY) {
+    throw new Error("API Key niet gevonden. Controleer de instellingen in Vercel.");
+  }
+
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const imageData = base64Image.split(',')[1];
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
     const prompt = `
-      Analyseer deze afbeelding. Als het eten is, schat de calorieën en macro's. 
-      Als het GEEN eten is, geef dit dan aan in de 'name' property (bijv. "Geen eten herkend").
+      Je bent een expert voedingsdeskundige. Analyseer deze foto grondig.
+      Zelfs als de foto niet perfect scherp is of van een afstand is genomen, doe je uiterste best om te herkennen wat er op staat.
       
-      ANTWOORD STRIKT IN DIT JSON FORMAAT:
+      Als het eten is: Geef de specifieke naam en een realistische schatting van kcal, eiwit, koolhydraten en vetten per portie.
+      Als het GEEN eten is: Geef bij 'name' aan wat het wel is (bijv. "Een toetsenbord"), maar zet de voedingswaarden op 0.
+      
+      ANTWOORD ALTIJD STRIKT IN DIT JSON FORMAAT:
       {
-        "name": "Naam van de maaltijd of object",
-        "calories": 0,
-        "protein": 0,
-        "carbs": 0,
-        "fats": 0
+        "name": "Naam van het gerecht",
+        "calories": 500,
+        "protein": 30,
+        "carbs": 50,
+        "fats": 20
       }
     `;
 
@@ -78,11 +85,11 @@ export const analyzeMealImage = async (base64Image: string) => {
     });
 
     const resultText = response.text?.trim();
-    if (!resultText) throw new Error("AI gaf geen bruikbaar antwoord.");
+    if (!resultText) throw new Error("Geen resultaat van de AI.");
     
     return JSON.parse(resultText);
   } catch (error: any) {
     console.error("Gemini Scan Error:", error);
-    throw new Error("De AI kon de afbeelding niet verwerken. Zorg voor goed licht en een duidelijke focus op het eten.");
+    throw new Error("De AI kon de maaltijd niet herkennen. Probeer een foto van iets dichterbij met meer licht.");
   }
 };

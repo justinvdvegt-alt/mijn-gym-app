@@ -20,13 +20,14 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
       img.src = base64Str;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1000;
+        // Verhoogde resolutie voor betere AI herkenning
+        const MAX_WIDTH = 1600; 
         const scale = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.85)); // Iets hogere kwaliteit
       };
     });
   };
@@ -57,7 +58,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
   };
 
   const handleConfirm = () => {
-    if (!result || !result.calories && result.calories !== 0) return;
+    if (!result || (!result.calories && result.calories !== 0)) return;
     onAdd({
       id: crypto.randomUUID(),
       name: result.name || 'Maaltijd',
@@ -72,14 +73,13 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     setResult(null);
   };
 
-  // Check of de AI echt eten heeft gevonden
   const isLikelyFood = result && (result.calories || 0) > 0;
 
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Food Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Maak een foto van je maaltijd.</p>
+        <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor directe macro's.</p>
       </header>
 
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
@@ -116,7 +116,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                   {isLikelyFood ? (
                     <p className="text-4xl font-black text-brand-600 mt-2">{result.calories} <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">kcal</span></p>
                   ) : (
-                    <p className="text-sm font-bold text-orange-500 mt-2 uppercase tracking-widest">Geen voedingswaarden gevonden</p>
+                    <p className="text-sm font-bold text-orange-500 mt-2 uppercase tracking-widest">Geen voedingswaarden herkend</p>
                   )}
                 </div>
 
