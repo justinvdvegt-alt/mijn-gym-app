@@ -28,6 +28,10 @@ export default defineConfig({
       }
     })
   ],
+  // Hier zorgen we ervoor dat process.env.API_KEY beschikbaar is in de browser
+  define: {
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+  },
   build: {
     outDir: 'dist',
     sourcemap: false

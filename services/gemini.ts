@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
@@ -10,8 +9,8 @@ import { AppState, HealthStats } from "../types";
 export const getAIInsights = async (state: AppState): Promise<string> => {
   const apiKey = process.env.API_KEY;
   
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
-    return "AI-coach configuratie nodig: Voeg 'API_KEY' toe aan je Vercel Environment Variables en doe een Redeploy.";
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
+    return "AI-coach is nog niet geconfigureerd. Zorg dat de API_KEY in Vercel staat en doe een Redeploy.";
   }
 
   try {
@@ -30,18 +29,15 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     return response.text || "Blijf je data loggen voor nieuwe inzichten!";
   } catch (error: any) {
     console.error("Gemini Insights Error:", error);
-    if (error.message?.includes('API key not found')) {
-      return "Fout: API-sleutel niet gevonden in de server-omgeving.";
-    }
-    return "De AI coach is tijdelijk niet bereikbaar. Controleer je internetverbinding.";
+    return "De AI coach is tijdelijk niet bereikbaar.";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
   const apiKey = process.env.API_KEY;
   
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
-    throw new Error("API_KEY ontbreekt. Ga naar Vercel Settings -> Environment Variables, voeg 'API_KEY' toe en doe een Redeploy.");
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
+    throw new Error("API_KEY niet gevonden. Controleer je Vercel instellingen.");
   }
 
   try {
@@ -81,9 +77,6 @@ export const analyzeMealImage = async (base64Image: string) => {
     return JSON.parse(resultText);
   } catch (error: any) {
     console.error("Meal Analysis Error:", error);
-    if (error.message?.includes('leaked')) {
-      throw new Error("Deze sleutel is door Google geblokkeerd. Gebruik een nieuwe en deel deze nooit in chats of code.");
-    }
-    throw new Error(error.message || "Analyse mislukt. Controleer je API instellingen in Vercel.");
+    throw new Error(error.message || "Analyse mislukt.");
   }
 };
