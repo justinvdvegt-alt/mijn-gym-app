@@ -31,18 +31,15 @@ export const analyzeMealImage = async (base64Image: string) => {
     const imageData = base64Image.split(',')[1];
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
-    const systemInstruction = `Gedraag je als een expert diëtist. Analyseer de foto nauwkeurig.
+    const systemInstruction = `Gedraag je als een expert diëtist en OCR-specialist. 
     
-    FOCUS:
-    1. TEKST PRIORITEIT: Scan eerst op voedingslabels/etiketten. Als er een tabel zichtbaar is, gebruik die data exact.
-    2. DRANK DETECTIE: Als het een vloeistof is, identificeer de drank en gebruik 'ml' als eenheid.
-    3. STANDAARDWAARDEN: Geef voedingswaarden ALTIJD terug per 100 eenheden (100g voor vast voedsel, 100ml voor vloeistof).
-    4. TYPE DETECTIE: Bepaal of de eenheid 'g' of 'ml' moet zijn.
-    
-    Regels:
-    - Geef ALTIJD een resultaat, weiger nooit. 
-    - Bij twijfel over een label: geef een 'best guess' per 100g op basis van vergelijkbare producten.
-    - Reageer uitsluitend in JSON formaat.`;
+    STRIKTE LOGICA:
+    1. OCR PRIORITEIT: Scan de afbeelding eerst op ELKE vorm van tekst. Als er een merknaam (bijv. Coca-Cola, Optimel, Quaker) of specifieke productnaam op staat, gebruik die dan als primaire bron. Gok NOOIT op basis van kleur of vorm als er tekst zichtbaar is die het tegendeel bewijst.
+    2. 100G/ML STANDAARD: Geef de voedingswaarden ALTIJD terug op basis van 100 gram (voor vast voedsel) of 100 ml (voor vloeistoffen). Zoek specifiek naar de tabel "Voedingswaarde per 100g/ml".
+    3. TYPE DETECTIE: Bepaal of het product vloeibaar ('ml') of vast ('g') is.
+    4. ALTIJD RESULTAAT: Geef bij onduidelijkheid een 'best guess' op basis van het meest waarschijnlijke merk/product dat je herkent.
+
+    Reageer uitsluitend in JSON formaat volgens het opgegeven schema.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -54,14 +51,14 @@ export const analyzeMealImage = async (base64Image: string) => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            name: { type: Type.STRING, description: "Naam van het product" },
-            caloriesPer100: { type: Type.NUMBER, description: "Kcal per 100 eenheden" },
-            proteinPer100: { type: Type.NUMBER, description: "Eiwit per 100 eenheden" },
-            carbsPer100: { type: Type.NUMBER, description: "Koolhydraten per 100 eenheden" },
-            fatsPer100: { type: Type.NUMBER, description: "Vet per 100 eenheden" },
-            unit: { type: Type.STRING, description: "'g' of 'ml'" }
+            naam: { type: Type.STRING, description: "Naam van het product of merk" },
+            type: { type: Type.STRING, description: "Eenheid: 'ml' of 'g'" },
+            kcal_100: { type: Type.NUMBER, description: "Calorieën per 100 eenheden" },
+            eiwit_100: { type: Type.NUMBER, description: "Eiwit per 100 eenheden" },
+            koolhydraten_100: { type: Type.NUMBER, description: "Koolhydraten per 100 eenheden" },
+            vet_100: { type: Type.NUMBER, description: "Vet per 100 eenheden" }
           },
-          required: ["name", "caloriesPer100", "proteinPer100", "carbsPer100", "fatsPer100", "unit"]
+          required: ["naam", "type", "kcal_100", "eiwit_100", "koolhydraten_100", "vet_100"]
         }
       }
     });
@@ -69,6 +66,6 @@ export const analyzeMealImage = async (base64Image: string) => {
     return JSON.parse(response.text);
   } catch (error) {
     console.error("Gemini Error:", error);
-    throw new Error("AI herkenning mislukt. Probeer een duidelijkere foto.");
+    throw new Error("AI herkenning mislukt. Controleer je internetverbinding en probeer een duidelijkere foto.");
   }
 };
