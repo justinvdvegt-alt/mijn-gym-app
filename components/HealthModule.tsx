@@ -15,7 +15,7 @@ const GOALS = [
   "Kracht Vergroten"
 ];
 
-// InputField BUITEN de component om focus-verlies te voorkomen
+// BELANGRIJK: Definieer dit BUITEN de HealthModule om te voorkomen dat de focus verspringt
 const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-50">
     <div className="flex items-center gap-2 mb-3">
@@ -43,7 +43,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
   const [saved, setSaved] = useState(false);
 
-  // Synchroniseer met opgeslagen data bij mount of verandering
+  // Synchroniseer met opgeslagen data bij het laden
   useEffect(() => {
     if (latest) {
       setSleep(latest.sleep?.toString() || '');
@@ -92,12 +92,12 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bio Metrics</h2>
-          <p className="text-sm text-slate-500 font-medium">Data blijft bewaard na refresh.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Mijn Statistieken</h2>
+          <p className="text-sm text-slate-500 font-medium">Bewaard in je profiel.</p>
         </div>
         {saved && (
           <div className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full animate-bounce">
-            OPGESLAGEN!
+            CHECK! OPGESLAGEN
           </div>
         )}
       </header>
@@ -105,21 +105,21 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
       {bmi && (
         <div className="bg-slate-900 p-6 rounded-[32px] text-white flex justify-between items-center shadow-xl">
           <div>
-            <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">Jouw BMI</div>
+            <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">Mijn BMI</div>
             <div className="text-4xl font-black">{bmi}</div>
           </div>
           <div className="text-right">
             <div className={`text-xs font-bold uppercase tracking-widest ${bmiCategory?.color}`}>
               {bmiCategory?.label}
             </div>
-            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Op basis van je huidige stats.</div>
+            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Gebaseerd op je lengte en gewicht.</div>
           </div>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-3 block">Mijn Doel</label>
+          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-3 block">Huidig Doel</label>
           <select 
             value={goal} 
             onChange={(e) => setGoal(e.target.value)}
@@ -142,7 +142,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
           type="submit" 
           className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all hover:bg-brand-700 mt-4"
         >
-          Gegevens Bevestigen
+          Alles Opslaan (Enter)
         </button>
       </form>
     </div>
