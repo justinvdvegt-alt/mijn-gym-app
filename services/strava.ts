@@ -2,13 +2,9 @@
 const CLIENT_ID = '197251';
 const CLIENT_SECRET = '1804f8f58f54354fddc9ee5e6180912e66d2f376';
 
-/**
- * Belangrijk: Voor Vercel moet je 'cyberfit-ecosystem.vercel.app' 
- * (of jouw specifieke domein) toevoegen aan Strava Dashboard.
- */
 const getRedirectUri = () => {
+  // Gebruik de origin en pathname, maar verwijder code/scope parameters als die er al staan
   const url = new URL(window.location.href);
-  // Verwijder trailing slashes en zorg voor een schoon basis domein
   return `${url.origin}${url.pathname}`.replace(/\/$/, "");
 };
 
@@ -34,8 +30,6 @@ export const connectStrava = () => {
 };
 
 export const handleStravaCallback = async (code: string): Promise<StravaTokens> => {
-  // Voor Strava is redirect_uri tijdens de token exchange soms ook verplicht 
-  // als het in de eerste stap werd gebruikt.
   const response = await fetch('https://www.strava.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,12 +43,10 @@ export const handleStravaCallback = async (code: string): Promise<StravaTokens> 
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error('Strava Token Exchange Error:', errorData);
     throw new Error(errorData.message || 'Strava link mislukt');
   }
 
   const data = await response.json();
-  
   const tokens = {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
@@ -94,7 +86,6 @@ const getValidToken = async (): Promise<string | null> => {
       };
       localStorage.setItem('strava_tokens', JSON.stringify(tokens));
     } catch (e) {
-      console.error('Token refresh failed', e);
       return null;
     }
   }
@@ -126,7 +117,6 @@ export const getLatestActivities = async () => {
         source: 'strava'
       }));
   } catch (e) {
-    console.error('Failed to fetch activities', e);
     return [];
   }
 };

@@ -11,25 +11,15 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
   
   const bioContext = latestHealth ? `
     Gebruiker Profiel:
-    - Lengte: ${latestHealth.height}cm
-    - Leeftijd: ${latestHealth.age}
-    - Huidig Gewicht: ${latestHealth.weight}kg
+    - Gewicht: ${latestHealth.weight}kg
     - Doel: ${latestHealth.goal}
     - Doel Kcal: ${latestHealth.calories}
-    - Doel Eiwit: ${latestHealth.protein}g
   ` : "Geen biometrie beschikbaar.";
 
   const prompt = `
-    Je bent een expert personal coach. Analyseer deze data en stel een kort, concreet plan of inzicht voor.
+    Je bent een expert personal coach. Analyseer deze data en stel 3 korte, krachtige actiepunten voor in het Nederlands.
     ${bioContext}
-    
-    Recente trainingen:
-    ${gymContext}
-    
-    Maaltijden vandaag: ${state.mealHistory.length}
-    
-    Geef 3 korte, krachtige actiepunten in het Nederlands die de gebruiker helpen bij hun doel. 
-    Wees motiverend maar eerlijk.
+    Training: ${gymContext}
   `;
 
   try {
@@ -47,14 +37,12 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
 export const analyzeMealImage = async (base64Image: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const mimeTypeMatch = base64Image.match(/^data:(image\/[a-z]+);base64,/);
-  const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
   const imageData = base64Image.split(',')[1];
+  const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
   const prompt = `
-    Identificeer het gerecht op de foto en schat de macro's in. 
-    Focus op nauwkeurigheid voor calorieën en eiwitten. 
-    Geef antwoord in strikt JSON formaat.
+    Identificeer de maaltijd en schat de macro's. 
+    GEEF ENKEL JSON TERUG. GEEN TEKST ERVOOR OF ERNA.
   `;
 
   try {
@@ -75,8 +63,7 @@ export const analyzeMealImage = async (base64Image: string) => {
             calories: { type: Type.NUMBER },
             protein: { type: Type.NUMBER },
             carbs: { type: Type.NUMBER },
-            fats: { type: Type.NUMBER },
-            fiber: { type: Type.NUMBER }
+            fats: { type: Type.NUMBER }
           },
           required: ["name", "calories", "protein", "carbs", "fats"]
         }
@@ -84,9 +71,11 @@ export const analyzeMealImage = async (base64Image: string) => {
     });
 
     const resultText = response.text?.trim();
-    if (!resultText) throw new Error("Lege respons van AI");
+    if (!resultText) throw new Error("Lege respons");
     
-    return JSON.parse(resultText);
+    // Verwijder eventuele markdown code blokken als Gemini ze toch stuurt
+    const cleanJson = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(cleanJson);
   } catch (error) {
     console.error("Gemini Scan Error:", error);
     throw error;
