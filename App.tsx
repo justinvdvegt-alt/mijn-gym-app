@@ -17,22 +17,15 @@ const App: React.FC = () => {
     saveState(state);
   }, [state]);
 
-  // Handle Strava OAuth callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     if (code) {
       window.history.replaceState({}, document.title, window.location.pathname);
-      const completeLink = async () => {
-        try {
-          await handleStravaCallback(code);
-          setState(prev => ({ ...prev, stravaLinked: true }));
-          setActiveTab('cardio');
-        } catch (err) {
-          console.error("Strava link failed", err);
-        }
-      };
-      completeLink();
+      handleStravaCallback(code).then(() => {
+        setState(prev => ({ ...prev, stravaLinked: true }));
+        setActiveTab('cardio');
+      });
     }
   }, []);
 
@@ -65,12 +58,18 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleDeleteWorkout = (id: string) => {
+    if (confirm('Wil je deze training verwijderen?')) {
+      setState(prev => ({ ...prev, workouts: prev.workouts.filter(w => w.id !== id) }));
+    }
+  };
+
   const handleAddCardio = (entry: CardioEntry) => {
-    setState(prev => {
-      const exists = prev.cardioHistory.some(h => h.id === entry.id);
-      if (exists) return prev;
-      return { ...prev, cardioHistory: [entry, ...prev.cardioHistory] };
-    });
+    setState(prev => ({ ...prev, cardioHistory: [entry, ...prev.cardioHistory] }));
+  };
+
+  const handleDeleteCardio = (id: string) => {
+    setState(prev => ({ ...prev, cardioHistory: prev.cardioHistory.filter(c => c.id !== id) }));
   };
 
   const handleAddHealth = (stats: HealthStats) => {
@@ -79,6 +78,10 @@ const App: React.FC = () => {
 
   const handleAddMeal = (meal: MealEntry) => {
     setState(prev => ({ ...prev, mealHistory: [meal, ...prev.mealHistory] }));
+  };
+
+  const handleDeleteMeal = (id: string) => {
+    setState(prev => ({ ...prev, mealHistory: prev.mealHistory.filter(m => m.id !== id) }));
   };
 
   const dailyTotal = useMemo(() => {
@@ -97,8 +100,7 @@ const App: React.FC = () => {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-background font-body flex flex-col max-w-md mx-auto relative border-x border-slate-100 shadow-2xl">
-      
+    <div className="min-h-screen bg-white font-body flex flex-col max-w-md mx-auto relative border-x border-slate-100 shadow-2xl">
       <main className="flex-1 overflow-y-auto">
         {activeTab === 'dashboard' && <Dashboard state={dashboardState as any} />}
         {activeTab === 'gym' && (
@@ -107,18 +109,29 @@ const App: React.FC = () => {
             onAddSet={handleAddSet} 
             onStartSession={handleStartSession}
             onFinishSession={handleFinishSession}
+            onDelete={handleDeleteWorkout}
           />
         )}
         {activeTab === 'cardio' && (
           <CardioModule 
             history={state.cardioHistory} 
             onAdd={handleAddCardio} 
+            onDelete={handleDeleteCardio}
             stravaLinked={state.stravaLinked}
             onLinkStrava={() => {}}
           />
         )}
-        {activeTab === 'scanner' && <ScannerModule onAdd={handleAddMeal} dailyTotal={dailyTotal} />}
-        {activeTab === 'health' && <HealthModule onAdd={handleAddHealth} latest={getLatestHealth(state.healthHistory)} />}
+        {activeTab === 'scanner' && (
+          <ScannerModule 
+            onAdd={handleAddMeal} 
+            onDelete={handleDeleteMeal}
+            dailyTotal={dailyTotal} 
+            mealHistory={state.mealHistory}
+          />
+        )}
+        {activeTab === 'health' && (
+          <HealthModule onAdd={handleAddHealth} latest={getLatestHealth(state.healthHistory)} />
+        )}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center p-5 z-50 max-w-md mx-auto rounded-t-[40px] shadow-2xl">
@@ -139,7 +152,7 @@ const TabButton = ({ active, onClick, icon, label }: any) => (
   >
     <div className="text-xl">{icon}</div>
     <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
-    {active && <div className="w-1 h-1 bg-brand-600 rounded-full mt-1 animate-pulse"></div>}
+    {active && <div className="w-1 h-1 bg-brand-600 rounded-full mt-1"></div>}
   </button>
 );
 

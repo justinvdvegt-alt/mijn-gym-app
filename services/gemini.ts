@@ -1,82 +1,69 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
-/**
- * Gemini AI Service
- * Gebruikt uitsluitend de veilige process.env.API_KEY.
- */
-
 export const getAIInsights = async (state: AppState): Promise<string> => {
   const apiKey = process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
-    return "AI-coach is nog niet geconfigureerd. Zorg dat de API_KEY in Vercel staat en doe een Redeploy.";
-  }
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) return "AI-coach configuratie nodig.";
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const latestHealth: HealthStats | undefined = state.healthHistory[state.healthHistory.length - 1];
-    const workouts = state.workouts || [];
-    const gymContext = workouts.slice(-3).map(w => `${w.label}: ${w.exercises.length} sets`).join(', ');
-    
-    const bioContext = latestHealth ? `Gebruiker: ${latestHealth.weight}kg, Doel: ${latestHealth.goal}.` : "";
+    const latestHealth = state.healthHistory[state.healthHistory.length - 1];
+    const gymContext = state.workouts?.slice(-3).map(w => `${w.label}: ${w.exercises.length} sets`).join(', ');
+    const bioContext = latestHealth ? `Leeftijd: ${latestHealth.age}, Gewicht: ${latestHealth.weight}kg, Lengte: ${latestHealth.height}cm, Doel: ${latestHealth.goal}.` : "";
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: `Je bent een high-performance fitness coach. Geef 3 uiterst korte, krachtige tips in het Nederlands op basis van deze data: ${bioContext} Recente trainingen: ${gymContext}. Focus op progressieve overload en consistentie.`,
     });
-    
-    return response.text || "Blijf je data loggen voor nieuwe inzichten!";
-  } catch (error: any) {
-    console.error("Gemini Insights Error:", error);
-    return "De AI coach is tijdelijk niet bereikbaar.";
+    return response.text || "Lekker bezig, blijf loggen!";
+  } catch (error) {
+    return "De AI coach is tijdelijk offline.";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
   const apiKey = process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
-    throw new Error("API_KEY niet gevonden. Controleer je Vercel instellingen.");
-  }
+  if (!apiKey || apiKey === "undefined") throw new Error("API_KEY ontbreekt.");
 
   try {
     const ai = new GoogleGenAI({ apiKey });
     const imageData = base64Image.split(',')[1];
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
-    const prompt = "Identificeer dit eten en geef een schatting van de voedingswaarden. Reageer uitsluitend in JSON formaat.";
+    // Ultra-specifieke prompt voor verpakkingen, flesjes en labels
+    const prompt = `Identificeer dit item nauwkeurig. 
+    Het kan zijn:
+    1. Eten op een bord (schat portiegrootte).
+    2. Een flesje drinken (zoek naar merknaam/label).
+    3. Een verpakking, zakje of bakje (zoek naar logo's of teksten als '250g' of 'Eiwitrijk').
+    4. Een supplement of fruit.
+    
+    Bepaal de calorieën en macro's (eiwit, koolh, vet) zo precies mogelijk op basis van de visuele informatie en merkkennis. Reageer uitsluitend in JSON.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: imageData } }
-        ]
+        parts: [{ text: prompt }, { inlineData: { mimeType, data: imageData } }]
       },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            name: { type: Type.STRING, description: "Naam van het gerecht" },
-            calories: { type: Type.NUMBER, description: "Totaal aantal calorieën" },
-            protein: { type: Type.NUMBER, description: "Eiwitten in gram" },
-            carbs: { type: Type.NUMBER, description: "Koolhydraten in gram" },
-            fats: { type: Type.NUMBER, description: "Vetten in gram" }
+            name: { type: Type.STRING },
+            calories: { type: Type.NUMBER },
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fats: { type: Type.NUMBER }
           },
           required: ["name", "calories", "protein", "carbs", "fats"]
         }
       }
     });
 
-    const resultText = response.text;
-    if (!resultText) throw new Error("De AI kon geen resultaat genereren.");
-    
-    return JSON.parse(resultText);
-  } catch (error: any) {
-    console.error("Meal Analysis Error:", error);
-    throw new Error(error.message || "Analyse mislukt.");
+    return JSON.parse(response.text);
+  } catch (error) {
+    throw new Error("AI herkenning mislukt. Probeer een duidelijkere foto van het label of de verpakking.");
   }
 };
