@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { HealthStats } from '../types';
 
 interface Props {
@@ -24,6 +23,22 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [age, setAge] = useState(latest?.age?.toString() || '');
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
 
+  const bmi = useMemo(() => {
+    const w = parseFloat(weight);
+    const h = parseFloat(height) / 100;
+    if (w > 0 && h > 0) return (w / (h * h)).toFixed(1);
+    return null;
+  }, [weight, height]);
+
+  const bmiCategory = useMemo(() => {
+    if (!bmi) return null;
+    const val = parseFloat(bmi);
+    if (val < 18.5) return { label: 'Ondergewicht', color: 'text-orange-500' };
+    if (val < 25) return { label: 'Gezond Gewicht', color: 'text-green-500' };
+    if (val < 30) return { label: 'Overgewicht', color: 'text-orange-500' };
+    return { label: 'Obesitas', color: 'text-red-500' };
+  }, [bmi]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAdd({
@@ -36,7 +51,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
       age: parseInt(age) || 0,
       goal: goal
     });
-    alert("Biometrie succesvol bijgewerkt!");
+    alert("Stats bijgewerkt!");
   };
 
   const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
@@ -57,15 +72,30 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   );
 
   return (
-    <div className="p-6 space-y-8 pb-24">
+    <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header>
-        <h2 className="text-2xl font-heading font-bold text-slate-900 tracking-tight">Bio Metrics & Doelen</h2>
-        <p className="text-sm text-slate-500 font-medium">Je profiel helpt de AI een plan op maat te maken.</p>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bio Metrics</h2>
+        <p className="text-sm text-slate-500 font-medium">Data voor je AI Coach.</p>
       </header>
       
+      {bmi && (
+        <div className="bg-slate-900 p-6 rounded-[32px] text-white flex justify-between items-center shadow-xl">
+          <div>
+            <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">Jouw BMI</div>
+            <div className="text-4xl font-black">{bmi}</div>
+          </div>
+          <div className="text-right">
+            <div className={`text-xs font-bold uppercase tracking-widest ${bmiCategory?.color}`}>
+              {bmiCategory?.label}
+            </div>
+            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight">Gebaseerd op je huidige stats.</div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-3 block">Mijn Fitness Doel</label>
+          <label className="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-3 block">Mijn Doel</label>
           <select 
             value={goal} 
             onChange={(e) => setGoal(e.target.value)}
@@ -84,19 +114,10 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
             <InputField label="Eiwit (g)" value={prot} onChange={setProt} placeholder="0" icon="🍗" step="1" />
         </div>
         
-        <button type="submit" className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 hover:bg-brand-700 active:scale-[0.98] transition-all">
-          Sla Profiel & Stats Op
+        <button type="submit" className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all">
+          Sla Stats Op
         </button>
       </form>
-
-      <div className="bg-brand-50 border border-brand-100 p-5 rounded-2xl">
-        <div className="flex gap-3">
-            <span className="text-brand-500 text-xl">💡</span>
-            <p className="text-xs text-brand-900/70 font-medium leading-relaxed">
-                Hoe nauwkeuriger je biometrie, hoe beter de AI Coach je kan adviseren over herstel en progressie.
-            </p>
-        </div>
-      </div>
     </div>
   );
 };

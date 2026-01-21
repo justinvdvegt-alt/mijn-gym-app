@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ExerciseEntry, WorkoutSession } from '../types';
 import { getPreviousGymEntry } from '../storage';
 
@@ -22,8 +22,30 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [newSessionLabel, setNewSessionLabel] = useState('Full Body - Dag 1');
+  const [seconds, setSeconds] = useState(0);
 
   const activeSession = useMemo(() => workouts.find(w => !w.isCompleted), [workouts]);
+  
+  // Timer effect
+  useEffect(() => {
+    let interval: any;
+    if (activeSession) {
+      const startTime = new Date(activeSession.date).getTime();
+      interval = setInterval(() => {
+        setSeconds(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    } else {
+      setSeconds(0);
+    }
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const completedSessions = useMemo(() => 
     workouts.filter(w => w.isCompleted)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), 
@@ -51,8 +73,8 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
     <div className="p-6 space-y-6 pb-24 animate-slide-up">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-slate-900">Gym Mode</h2>
-          <p className="text-sm text-slate-500 font-medium">Log je sets of bekijk je historie.</p>
+          <h2 className="text-2xl font-bold text-slate-900">Gym Mode</h2>
+          <p className="text-sm text-slate-500 font-medium">Log je voortgang.</p>
         </div>
         <div className="bg-slate-100 p-1 rounded-xl flex shadow-inner">
           <button 
@@ -77,7 +99,7 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
               <div className="text-4xl">🏋️‍♂️</div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Nieuwe Training</h3>
-                <p className="text-xs text-slate-400 mt-1">Start een sessie om je sets bij te houden.</p>
+                <p className="text-xs text-slate-400 mt-1">Klaar om te knallen?</p>
               </div>
               <div className="space-y-3">
                 <select 
@@ -101,14 +123,20 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-brand-600 p-5 rounded-3xl shadow-lg text-white flex justify-between items-center">
-                <div>
-                  <div className="text-[10px] font-black uppercase opacity-80 tracking-widest">In training</div>
+              <div className="bg-brand-600 p-5 rounded-3xl shadow-lg text-white flex justify-between items-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none">
+                   <div className="text-4xl font-black">{formatTime(seconds)}</div>
+                </div>
+                <div className="relative z-10">
+                  <div className="text-[10px] font-black uppercase opacity-80 tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                    Live: {formatTime(seconds)}
+                  </div>
                   <div className="text-xl font-black">{activeSession.label}</div>
                 </div>
                 <button 
                   onClick={() => onFinishSession(activeSession.id)}
-                  className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors"
+                  className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors relative z-10"
                 >
                   Klaar
                 </button>
@@ -210,7 +238,7 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
           {completedSessions.length === 0 && (
             <div className="text-center py-20">
               <div className="text-3xl mb-4 opacity-20">📂</div>
-              <p className="text-slate-400 font-bold italic text-sm tracking-tight">Nog geen voltooide trainingen.</p>
+              <p className="text-slate-400 font-bold italic text-sm tracking-tight">Nog geen trainingen.</p>
             </div>
           )}
         </div>
