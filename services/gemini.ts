@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
@@ -27,8 +28,8 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     
     Maaltijden vandaag: ${state.mealHistory.length}
     
-    Geef 3 korte, krachtige actiepunten in het Nederlands die de gebruiker helpen bij hun doel (${latestHealth?.goal || 'algemene fitness'}). 
-    Noem indien relevant hun BMI of caloriebalans.
+    Geef 3 korte, krachtige actiepunten in het Nederlands die de gebruiker helpen bij hun doel. 
+    Wees motiverend maar eerlijk.
   `;
 
   try {
@@ -46,15 +47,14 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
 export const analyzeMealImage = async (base64Image: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Extraheer mimeType uit de base64 string voor betere compatibiliteit
   const mimeTypeMatch = base64Image.match(/^data:(image\/[a-z]+);base64,/);
   const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
   const imageData = base64Image.split(',')[1];
 
   const prompt = `
-    Analyseer deze foto van een maaltijd heel nauwkeurig. 
-    Schat de hoeveelheid calorieën en macro-nutriënten in op basis van de zichtbare porties.
-    Geef ALTIJD een resultaat terug in het gevraagde JSON formaat.
+    Identificeer het gerecht op de foto en schat de macro's in. 
+    Focus op nauwkeurigheid voor calorieën en eiwitten. 
+    Geef antwoord in strikt JSON formaat.
   `;
 
   try {
@@ -71,30 +71,12 @@ export const analyzeMealImage = async (base64Image: string) => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            name: {
-              type: Type.STRING,
-              description: "Naam van het gerecht.",
-            },
-            calories: {
-              type: Type.NUMBER,
-              description: "Totaal aantal kcal.",
-            },
-            protein: {
-              type: Type.NUMBER,
-              description: "Gram eiwit.",
-            },
-            carbs: {
-              type: Type.NUMBER,
-              description: "Gram koolhydraten.",
-            },
-            fats: {
-              type: Type.NUMBER,
-              description: "Gram vetten.",
-            },
-            fiber: {
-              type: Type.NUMBER,
-              description: "Gram vezels.",
-            }
+            name: { type: Type.STRING },
+            calories: { type: Type.NUMBER },
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fats: { type: Type.NUMBER },
+            fiber: { type: Type.NUMBER }
           },
           required: ["name", "calories", "protein", "carbs", "fats"]
         }

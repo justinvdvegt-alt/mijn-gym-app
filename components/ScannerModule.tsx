@@ -12,24 +12,46 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<Partial<MealEntry> | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const compressImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1024;
+        const scale = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% kwaliteit JPEG
+      };
+    });
+  };
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setError(null);
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      setPreview(base64);
+      const originalBase64 = reader.result as string;
       setLoading(true);
+      setPreview(originalBase64);
       setResult(null);
 
       try {
-        const data = await analyzeMealImage(base64);
+        const compressedBase64 = await compressImage(originalBase64);
+        const data = await analyzeMealImage(compressedBase64);
         setResult(data);
-      } catch (err) {
-        alert("Kon maaltijd niet scannen. Probeer het opnieuw.");
+      } catch (err: any) {
+        console.error("Scan Error:", err);
+        setError("AI kon maaltijd niet herkennen. Probeer een duidelijkere foto.");
+        setPreview(null);
       } finally {
         setLoading(false);
       }
@@ -55,14 +77,11 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
 
   return (
     <div className="p-6 space-y-8 pb-24">
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-heading font-bold text-slate-900 tracking-tight">AI Macro Scanner</h2>
-          <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor instant macro's.</p>
-        </div>
+      <header>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Macro Scanner</h2>
+        <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor instant macro's.</p>
       </header>
 
-      {/* Daily Total Summary */}
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
         <div>
           <div className="text-[10px] font-bold text-slate-400 uppercase">Kcal</div>
@@ -82,6 +101,12 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl text-xs font-bold border border-red-100 animate-pulse">
+          ⚠️ {error}
+        </div>
+      )}
+
       <div className="space-y-4">
         {!preview ? (
           <button 
@@ -100,14 +125,14 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
             {loading && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
                 <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="font-heading font-bold text-slate-900 animate-pulse">AI Analyseert...</p>
+                <p className="font-bold text-slate-900 animate-pulse">AI Analyseert...</p>
               </div>
             )}
 
-            {result && (
+            {result && !loading && (
               <div className="p-6 space-y-6">
                 <div>
-                  <h3 className="text-xl font-heading font-bold text-slate-900">{result.name}</h3>
+                  <h3 className="text-xl font-bold text-slate-900">{result.name}</h3>
                   <p className="text-3xl font-bold text-slate-900 mt-1">{result.calories} <span className="text-sm font-normal text-slate-400">kcal</span></p>
                 </div>
 
@@ -126,7 +151,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                   </button>
                   <button 
                     onClick={handleConfirm}
-                    className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all"
+                    className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg active:scale-95 transition-all"
                   >
                     Toevoegen
                   </button>
@@ -150,7 +175,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
 };
 
 const MacroRow = ({ label, value, color, unit }: any) => {
-  const width = Math.min(100, (value / 50) * 100); // Visual scaling
+  const width = Math.min(100, (value / 50) * 100);
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">

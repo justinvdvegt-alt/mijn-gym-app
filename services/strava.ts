@@ -3,13 +3,13 @@ const CLIENT_ID = '197251';
 const CLIENT_SECRET = '1804f8f58f54354fddc9ee5e6180912e66d2f376';
 
 /**
- * Belangrijk: De 'Authorization Callback Domain' in je Strava Dashboard 
- * moet exact overeenkomen met het domein waar deze app op draait (bijv. localhost of je preview URL).
+ * Belangrijk: Voor Vercel moet je 'cyberfit-ecosystem.vercel.app' 
+ * (of jouw specifieke domein) toevoegen aan Strava Dashboard.
  */
 const getRedirectUri = () => {
-  // Gebruik de huidige URL zonder query parameters
   const url = new URL(window.location.href);
-  return url.origin + url.pathname;
+  // Verwijder trailing slashes en zorg voor een schoon basis domein
+  return `${url.origin}${url.pathname}`.replace(/\/$/, "");
 };
 
 export interface StravaTokens {
@@ -21,13 +21,12 @@ export interface StravaTokens {
 export const connectStrava = () => {
   const redirectUri = getRedirectUri();
   
-  // Gebruik URLSearchParams voor veilige encoding van parameters
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: 'code',
-    approval_prompt: 'auto', // 'auto' voorkomt dat de gebruiker elke keer opnieuw moet goedkeuren
-    scope: 'read,activity:read_all' // 'read' is vaak nodig als basis
+    approval_prompt: 'auto',
+    scope: 'read,activity:read_all'
   });
 
   const authUrl = `https://www.strava.com/oauth/authorize?${params.toString()}`;
@@ -35,6 +34,8 @@ export const connectStrava = () => {
 };
 
 export const handleStravaCallback = async (code: string): Promise<StravaTokens> => {
+  // Voor Strava is redirect_uri tijdens de token exchange soms ook verplicht 
+  // als het in de eerste stap werd gebruikt.
   const response = await fetch('https://www.strava.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,7 +50,7 @@ export const handleStravaCallback = async (code: string): Promise<StravaTokens> 
   if (!response.ok) {
     const errorData = await response.json();
     console.error('Strava Token Exchange Error:', errorData);
-    throw new Error('Failed to exchange Strava code');
+    throw new Error(errorData.message || 'Strava link mislukt');
   }
 
   const data = await response.json();
@@ -71,7 +72,6 @@ const getValidToken = async (): Promise<string | null> => {
   let tokens: StravaTokens = JSON.parse(stored);
   const now = Math.floor(Date.now() / 1000);
 
-  // Ververs token als deze binnen 5 minuten verloopt
   if (tokens.expires_at < now + 300) {
     try {
       const response = await fetch('https://www.strava.com/oauth/token', {
@@ -115,16 +115,15 @@ export const getLatestActivities = async () => {
     const activities = await response.json();
 
     return activities
-      .filter((a: any) => a.type === 'Run')
+      .filter((a: any) => a.type === 'Run' || a.type === 'Walk')
       .slice(0, 5)
       .map((a: any) => ({
         id: `strava-${a.id}`,
-        type: 'run',
+        type: a.type === 'Run' ? 'run' : 'walk',
         distance: parseFloat((a.distance / 1000).toFixed(2)),
         duration: Math.round(a.moving_time / 60),
         date: a.start_date,
-        source: 'strava',
-        avgSpeed: parseFloat((a.average_speed * 3.6).toFixed(1))
+        source: 'strava'
       }));
   } catch (e) {
     console.error('Failed to fetch activities', e);
