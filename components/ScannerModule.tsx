@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { MealEntry } from '../types';
 import { analyzeMealImage } from '../services/gemini';
@@ -166,10 +165,10 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
                      <div className="text-left text-[11px] text-slate-500 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <p className="font-bold text-slate-700">Oplossing:</p>
                         <ol className="list-decimal ml-4 space-y-1">
-                          <li>Ga naar <b>Vercel Dashboard</b></li>
-                          <li>Settings -> Environment Variables</li>
-                          <li>Voeg <b>API_KEY</b> toe met je nieuwe sleutel</li>
-                          <li>Ga naar Deployments -> <b>Redeploy</b></li>
+                          <li>{"Ga naar Vercel Dashboard"}</li>
+                          <li>{"Settings \u2192 Environment Variables"}</li>
+                          <li>{"Voeg API_KEY toe met je nieuwe sleutel"}</li>
+                          <li>{"Ga naar Deployments \u2192 Redeploy"}</li>
                         </ol>
                      </div>
                    )}
