@@ -46,7 +46,7 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
 export const analyzeMealImage = async (base64Image: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Extraheer mimeType uit de base64 string
+  // Extraheer mimeType uit de base64 string voor betere compatibiliteit
   const mimeTypeMatch = base64Image.match(/^data:(image\/[a-z]+);base64,/);
   const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
   const imageData = base64Image.split(',')[1];
@@ -54,6 +54,7 @@ export const analyzeMealImage = async (base64Image: string) => {
   const prompt = `
     Analyseer deze foto van een maaltijd heel nauwkeurig. 
     Schat de hoeveelheid calorieën en macro-nutriënten in op basis van de zichtbare porties.
+    Geef ALTIJD een resultaat terug in het gevraagde JSON formaat.
   `;
 
   try {
@@ -72,7 +73,7 @@ export const analyzeMealImage = async (base64Image: string) => {
           properties: {
             name: {
               type: Type.STRING,
-              description: "Een smakelijke naam voor het gedetecteerde gerecht.",
+              description: "Naam van het gerecht.",
             },
             calories: {
               type: Type.NUMBER,
@@ -100,10 +101,12 @@ export const analyzeMealImage = async (base64Image: string) => {
       }
     });
 
-    const resultText = response.text?.trim() || '{}';
+    const resultText = response.text?.trim();
+    if (!resultText) throw new Error("Lege respons van AI");
+    
     return JSON.parse(resultText);
   } catch (error) {
-    console.error("Gemini Scan Detailed Error:", error);
+    console.error("Gemini Scan Error:", error);
     throw error;
   }
 };
