@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { HealthStats } from '../types';
 
@@ -15,7 +14,7 @@ const GOALS = [
   "Kracht Vergroten"
 ];
 
-// Extern gedefinieerd om re-renders en focus-verlies te voorkomen
+// InputField BUITEN de component definitie om focus-verlies te voorkomen bij re-renders
 const InputField = ({ label, value, onChange, placeholder, icon, type = "number", step = "0.1" }: any) => (
   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-50">
     <div className="flex items-center gap-2 mb-3">
@@ -43,9 +42,9 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
   const [goal, setGoal] = useState(latest?.goal || GOALS[0]);
   const [saved, setSaved] = useState(false);
 
-  // Zorg dat bij refresh de data weer in de velden staat
+  // Alleen synchroniseren als de data van buitenaf echt verandert (bijv. na mount)
   useEffect(() => {
-    if (latest) {
+    if (latest && !weight && !height) { 
       setSleep(latest.sleep?.toString() || '');
       setCal(latest.calories?.toString() || '');
       setProt(latest.protein?.toString() || '');
@@ -92,12 +91,12 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Mijn Statistieken</h2>
-          <p className="text-sm text-slate-500 font-medium">Bewaard in je lokale profiel.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Mijn Stats</h2>
+          <p className="text-sm text-slate-500 font-medium">Bewaard in je profiel.</p>
         </div>
         {saved && (
           <div className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full animate-bounce">
-            CHECK! OPGESLAGEN
+            OPGESLAGEN!
           </div>
         )}
       </header>
@@ -112,7 +111,6 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
             <div className={`text-xs font-bold uppercase tracking-widest ${bmiCategory?.color}`}>
               {bmiCategory?.label}
             </div>
-            <div className="text-[10px] opacity-40 mt-1 max-w-[100px] leading-tight text-white/60">Op basis van lengte en gewicht.</div>
           </div>
         </div>
       )}
@@ -142,7 +140,7 @@ export const HealthModule: React.FC<Props> = ({ onAdd, latest }) => {
           type="submit" 
           className="w-full bg-brand-600 text-white font-bold p-5 text-lg rounded-2xl shadow-lg shadow-brand-100 active:scale-95 transition-all hover:bg-brand-700 mt-4"
         >
-          Alles Opslaan (Enter)
+          Opslaan (of druk op Enter)
         </button>
       </form>
     </div>

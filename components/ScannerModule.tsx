@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { MealEntry } from '../types';
 import { analyzeMealImage } from '../services/gemini';
@@ -21,13 +20,13 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
       img.src = base64Str;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200; // Iets groter voor meer detail
+        const MAX_WIDTH = 1000;
         const scale = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.9)); // Hogere kwaliteit JPEG
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
     });
   };
@@ -37,19 +36,19 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     if (!file) return;
 
     setError(null);
+    setResult(null);
     const reader = new FileReader();
     reader.onloadend = async () => {
       const originalBase64 = reader.result as string;
-      setLoading(true);
       setPreview(originalBase64);
-      setResult(null);
+      setLoading(true);
 
       try {
         const compressedBase64 = await compressImage(originalBase64);
         const data = await analyzeMealImage(compressedBase64);
         setResult(data);
       } catch (err: any) {
-        setError(err.message || "Analyse mislukt. Probeer het opnieuw.");
+        setError(err.message || "Analyse mislukt.");
       } finally {
         setLoading(false);
       }
@@ -58,7 +57,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
   };
 
   const handleConfirm = () => {
-    if (!result) return;
+    if (!result || !result.calories && result.calories !== 0) return;
     onAdd({
       id: crypto.randomUUID(),
       name: result.name || 'Maaltijd',
@@ -73,51 +72,89 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
     setResult(null);
   };
 
+  // Check of de AI echt eten heeft gevonden
+  const isLikelyFood = result && (result.calories || 0) > 0;
+
   return (
     <div className="p-6 space-y-8 pb-24 animate-slide-up">
       <header>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Macro Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Scan je maaltijd voor instant resultaat.</p>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">AI Food Scanner</h2>
+        <p className="text-sm text-slate-500 font-medium">Maak een foto van je maaltijd.</p>
       </header>
 
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-4 gap-2 text-center">
-        <div><div className="text-[10px] font-bold text-slate-400 uppercase">Kcal</div><div className="text-sm font-bold text-slate-900">{dailyTotal.cal}</div></div>
-        <div><div className="text-[10px] font-bold text-brand-500 uppercase">Eiwit</div><div className="text-sm font-bold text-slate-900">{dailyTotal.prot}g</div></div>
-        <div><div className="text-[10px] font-bold text-orange-500 uppercase">Koolh</div><div className="text-sm font-bold text-slate-900">{dailyTotal.carbs}g</div></div>
-        <div><div className="text-[10px] font-bold text-yellow-500 uppercase">Vet</div><div className="text-sm font-bold text-slate-900">{dailyTotal.fats}g</div></div>
+        <StatItem label="Kcal" value={dailyTotal.cal} color="text-slate-900" />
+        <StatItem label="Eiwit" value={`${dailyTotal.prot}g`} color="text-brand-500" />
+        <StatItem label="Koolh" value={`${dailyTotal.carbs}g`} color="text-orange-500" />
+        <StatItem label="Vet" value={`${dailyTotal.fats}g`} color="text-yellow-500" />
       </div>
 
       <div className="space-y-4">
         {!preview ? (
-          <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-square bg-white border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 hover:border-brand-500 active:scale-95 transition-all">
-            <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center text-2xl">📸</div>
-            <span className="font-bold text-slate-500 uppercase tracking-widest text-xs">Foto maken</span>
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            className="w-full aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] flex flex-col items-center justify-center gap-4 hover:border-brand-500 active:scale-95 transition-all"
+          >
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-3xl shadow-sm">📸</div>
+            <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Open Camera</span>
           </button>
         ) : (
-          <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl relative">
+          <div className="bg-white rounded-[40px] overflow-hidden border border-slate-100 shadow-2xl relative">
             <img src={preview} alt="Preview" className="w-full aspect-square object-cover" />
+            
             {loading && (
-              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
-                <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="font-bold text-slate-900 animate-pulse uppercase tracking-widest text-[10px]">AI analyseert...</p>
+              <div className="absolute inset-0 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="font-black text-slate-900 animate-pulse uppercase tracking-[0.2em] text-[10px]">AI analyseert...</p>
               </div>
             )}
+
             {result && !loading && (
-              <div className="p-6 space-y-6">
+              <div className="p-8 space-y-6">
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">{result.name}</h3>
-                  <p className="text-3xl font-bold text-slate-900 mt-1">{result.calories} <span className="text-sm font-normal text-slate-400">kcal</span></p>
+                  <h3 className="text-2xl font-black text-slate-900 leading-tight">{result.name}</h3>
+                  {isLikelyFood ? (
+                    <p className="text-4xl font-black text-brand-600 mt-2">{result.calories} <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">kcal</span></p>
+                  ) : (
+                    <p className="text-sm font-bold text-orange-500 mt-2 uppercase tracking-widest">Geen voedingswaarden gevonden</p>
+                  )}
                 </div>
+
+                <div className="grid grid-cols-3 gap-4 border-y border-slate-50 py-6">
+                  <div className="text-center">
+                    <div className="text-[10px] font-black text-slate-300 uppercase mb-1">Eiwit</div>
+                    <div className="font-bold text-slate-900">{result.protein}g</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] font-black text-slate-300 uppercase mb-1">Koolh</div>
+                    <div className="font-bold text-slate-900">{result.carbs}g</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] font-black text-slate-300 uppercase mb-1">Vet</div>
+                    <div className="font-bold text-slate-900">{result.fats}g</div>
+                  </div>
+                </div>
+
                 <div className="flex gap-3">
-                  <button onClick={() => { setPreview(null); setResult(null); }} className="flex-1 bg-slate-100 text-slate-600 font-bold p-4 rounded-2xl active:scale-95 transition-all">Opnieuw</button>
-                  <button onClick={handleConfirm} className="flex-[2] bg-brand-600 text-white font-bold p-4 rounded-2xl shadow-lg active:scale-95 transition-all">Toevoegen</button>
+                  <button onClick={() => { setPreview(null); setResult(null); }} className="flex-1 bg-slate-100 text-slate-500 font-bold p-5 rounded-2xl active:scale-95 transition-all">
+                    Reset
+                  </button>
+                  <button 
+                    disabled={!isLikelyFood}
+                    onClick={handleConfirm} 
+                    className={`flex-[2] font-black p-5 rounded-2xl shadow-lg active:scale-95 transition-all ${isLikelyFood ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                  >
+                    Opslaan
+                  </button>
                 </div>
               </div>
             )}
-            {error && !loading && !result && (
-              <div className="p-6 text-center space-y-4">
-                <p className="text-red-600 text-sm font-bold">{error}</p>
-                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-4 rounded-2xl">Probeer Opnieuw</button>
+
+            {error && !loading && (
+              <div className="p-8 text-center space-y-6">
+                <div className="text-4xl">⚠️</div>
+                <p className="text-slate-600 font-bold leading-relaxed">{error}</p>
+                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl">Probeer Opnieuw</button>
               </div>
             )}
           </div>
@@ -128,17 +165,9 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
   );
 };
 
-const MacroRow = ({ label, value, color, unit }: any) => {
-  const width = Math.min(100, ((value || 0) / 50) * 100);
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
-        <span>{label}</span>
-        <span className="text-slate-900">{value || 0}{unit}</span>
-      </div>
-      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${width}%` }}></div>
-      </div>
-    </div>
-  );
-};
+const StatItem = ({ label, value, color }: any) => (
+  <div>
+    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">{label}</div>
+    <div className={`text-sm font-black ${color}`}>{value}</div>
+  </div>
+);

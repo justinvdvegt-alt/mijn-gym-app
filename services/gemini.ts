@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
@@ -27,10 +26,10 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text || "Begin met het loggen van je stats.";
+    return response.text || "Begin met het loggen van je stats voor persoonlijke inzichten.";
   } catch (error: any) {
     console.error("Gemini Insights Error:", error);
-    return "De AI Coach analyseert je voortgang. Voeg meer data toe voor betere inzichten.";
+    return "De AI Coach is bezig met je analyse. Voeg meer trainingen toe!";
   }
 };
 
@@ -41,13 +40,12 @@ export const analyzeMealImage = async (base64Image: string) => {
     const mimeType = base64Image.split(',')[0].split(':')[1].split(';')[0];
 
     const prompt = `
-      Je bent een expert voedingsanalist. Analyseer deze maaltijd. 
-      Zelfs als de foto wazig is, geef je beste schatting van de calorieën en macro's.
-      ANTWOORD ENKEL IN JSON FORMAAT.
+      Analyseer deze afbeelding. Als het eten is, schat de calorieën en macro's. 
+      Als het GEEN eten is, geef dit dan aan in de 'name' property (bijv. "Geen eten herkend").
       
-      JSON:
+      ANTWOORD STRIKT IN DIT JSON FORMAAT:
       {
-        "name": "Naam van de maaltijd",
+        "name": "Naam van de maaltijd of object",
         "calories": 0,
         "protein": 0,
         "carbs": 0,
@@ -80,12 +78,11 @@ export const analyzeMealImage = async (base64Image: string) => {
     });
 
     const resultText = response.text?.trim();
-    if (!resultText) throw new Error("Leeg resultaat van AI");
+    if (!resultText) throw new Error("AI gaf geen bruikbaar antwoord.");
     
-    const cleanJson = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(cleanJson);
+    return JSON.parse(resultText);
   } catch (error: any) {
     console.error("Gemini Scan Error:", error);
-    throw new Error("AI kon de maaltijd niet herkennen. Probeer een duidelijkere foto van dichtbij.");
+    throw new Error("De AI kon de afbeelding niet verwerken. Zorg voor goed licht en een duidelijke focus op het eten.");
   }
 };
