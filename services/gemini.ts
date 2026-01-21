@@ -1,15 +1,17 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, HealthStats } from "../types";
 
 /**
  * Gemini AI Service
- * Gebruikt uitsluitend de door het platform geïnjecteerde process.env.API_KEY.
+ * Gebruikt uitsluitend de veilige process.env.API_KEY.
  */
 
 export const getAIInsights = async (state: AppState): Promise<string> => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    return "AI Coach: Configureer je API_KEY in de project-instellingen om persoonlijke tips te ontvangen.";
+  
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
+    return "AI-coach configuratie nodig: Voeg 'API_KEY' toe aan je Vercel Environment Variables en doe een Redeploy.";
   }
 
   try {
@@ -28,17 +30,18 @@ export const getAIInsights = async (state: AppState): Promise<string> => {
     return response.text || "Blijf je data loggen voor nieuwe inzichten!";
   } catch (error: any) {
     console.error("Gemini Insights Error:", error);
-    if (error.message?.includes('leaked') || error.message?.includes('API_KEY_INVALID')) {
-      return "Systeemmelding: De AI-sleutel is geblokkeerd of ongeldig. Update de API_KEY in je hosting dashboard.";
+    if (error.message?.includes('API key not found')) {
+      return "Fout: API-sleutel niet gevonden in de server-omgeving.";
     }
-    return "De AI coach is tijdelijk niet bereikbaar.";
+    return "De AI coach is tijdelijk niet bereikbaar. Controleer je internetverbinding.";
   }
 };
 
 export const analyzeMealImage = async (base64Image: string) => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("Geen API-sleutel gevonden. Voeg 'API_KEY' toe aan je Environment Variables.");
+  
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
+    throw new Error("API_KEY ontbreekt. Ga naar Vercel Settings -> Environment Variables, voeg 'API_KEY' toe en doe een Redeploy.");
   }
 
   try {
@@ -79,11 +82,8 @@ export const analyzeMealImage = async (base64Image: string) => {
   } catch (error: any) {
     console.error("Meal Analysis Error:", error);
     if (error.message?.includes('leaked')) {
-      throw new Error("Deze API-sleutel is gerapporteerd als gelekt en geblokkeerd door Google. Gebruik een nieuwe sleutel en zet deze ALLEEN in de Environment Variables van je host.");
+      throw new Error("Deze sleutel is door Google geblokkeerd. Gebruik een nieuwe en deel deze nooit in chats of code.");
     }
-    if (error.message?.includes('API_KEY_INVALID')) {
-      throw new Error("De ingevoerde API-sleutel is niet geldig.");
-    }
-    throw new Error(error.message || "Analyse mislukt. Probeer het opnieuw met een duidelijkere foto.");
+    throw new Error(error.message || "Analyse mislukt. Controleer je API instellingen in Vercel.");
   }
 };

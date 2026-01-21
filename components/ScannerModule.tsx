@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { MealEntry } from '../types';
 import { analyzeMealImage } from '../services/gemini';
@@ -159,13 +160,21 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, dailyTotal }) => {
             {error && !loading && (
               <div className="p-8 text-center space-y-6">
                 <div className="text-4xl">⚠️</div>
-                <div className="space-y-2">
-                   <p className="text-red-600 text-sm font-bold leading-relaxed">{error}</p>
-                   {error.includes('API_KEY') && (
-                     <p className="text-[10px] text-slate-400">Controleer je Vercel project instellingen.</p>
+                <div className="space-y-4">
+                   <p className="text-red-600 text-sm font-bold leading-relaxed bg-red-50 p-4 rounded-xl">{error}</p>
+                   {error.includes('Vercel') && (
+                     <div className="text-left text-[11px] text-slate-500 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <p className="font-bold text-slate-700">Oplossing:</p>
+                        <ol className="list-decimal ml-4 space-y-1">
+                          <li>Ga naar <b>Vercel Dashboard</b></li>
+                          <li>Settings -> Environment Variables</li>
+                          <li>Voeg <b>API_KEY</b> toe met je nieuwe sleutel</li>
+                          <li>Ga naar Deployments -> <b>Redeploy</b></li>
+                        </ol>
+                     </div>
                    )}
                 </div>
-                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl">Opnieuw proberen</button>
+                <button onClick={() => { setPreview(null); setError(null); }} className="w-full bg-slate-900 text-white font-bold p-5 rounded-2xl shadow-lg active:scale-95 transition-all">Opnieuw proberen</button>
               </div>
             )}
           </div>
