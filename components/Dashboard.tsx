@@ -15,6 +15,7 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
   const [loading, setLoading] = useState(false);
 
   const healthHistory = state.healthHistory || [];
+  
   const latestHealth = useMemo(() => {
     if (!healthHistory.length) return undefined;
     return [...healthHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -44,12 +45,31 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
     }), { cal: 0, prot: 0, carbs: 0, fats: 0 });
   }, [state.mealHistory]);
 
-  const weightData = healthHistory.map(h => ({
-    date: new Date(h.date).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }),
-    weight: h.weight
-  })).slice(-7);
+  // LOGICA UPDATE: Groepeer gewicht per dag voor een zuiver verloop
+  const weightData = useMemo(() => {
+    if (!healthHistory.length) return [];
 
-  // Sync goals strictly with latestHealth from state
+    // 1. Map naar dag-objecten en filter op gewicht aanwezigheid
+    const dailyMap = healthHistory.reduce((acc, h) => {
+      if (h.weight === undefined || h.weight === null || h.weight === 0) return acc;
+      
+      const dayKey = new Date(h.date).toISOString().split('T')[0];
+      // Altijd de nieuwste meting van die dag bewaren
+      acc[dayKey] = h.weight;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 2. Omzetten naar array en sorteren op datum
+    return Object.entries(dailyMap)
+      .map(([date, weight]) => ({
+        fullDate: date,
+        displayDate: new Date(date).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }),
+        weight
+      }))
+      .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime())
+      .slice(-7); // Toon de laatste 7 gelogde dagen
+  }, [healthHistory]);
+
   const goals = useMemo(() => ({
     cal: latestHealth?.calories || 2500,
     prot: latestHealth?.protein || 180,
@@ -77,7 +97,7 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
         </button>
       </header>
 
-      {/* Daily Progress - Detailed Macro View */}
+      {/* Daily Progress */}
       <section className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm space-y-6">
         <div className="flex justify-between items-end">
           <div className="space-y-1">
@@ -94,7 +114,7 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
         
         <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
           <div 
-            className={`h-full transition-all duration-1000 ${isOverLimit ? 'bg-red-500' : 'bg-brand-500'}`} 
+            className={`h-full transition-all duration-1000 ${isOverLimit ? 'bg-red-50' : 'bg-brand-500'}`} 
             style={{ width: `${Math.min((dailyTotals.cal / goals.cal) * 100, 100)}%` }}
           ></div>
         </div>
@@ -120,27 +140,49 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
         </div>
       </section>
 
-      {/* Weight Chart */}
+      {/* Weight Chart - Verbeterd met groepering */}
       <section className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm">
-        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Gewichtsverloop (7d)</h3>
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Gewichtsverloop (Laatste 7 Logs)</h3>
         <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weightData}>
-              <defs>
-                <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
-              <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
-              />
-              <Area type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorWeight)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {weightData.length > 1 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={weightData}>
+                <defs>
+                  <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis 
+                  dataKey="displayDate" 
+                  stroke="#94a3b8" 
+                  fontSize={10} 
+                  tickLine={false} 
+                  axisLine={false} 
+                />
+                <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
+                <Tooltip 
+                    labelStyle={{ color: '#64748b', marginBottom: '4px' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                    formatter={(value: number) => [`${value} kg`, 'Gewicht']}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="weight" 
+                  stroke="#0ea5e9" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorWeight)" 
+                  animationDuration={1500}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-slate-300 text-xs font-bold italic">
+              Log minimaal 2 dagen gewicht voor een grafiek.
+            </div>
+          )}
         </div>
       </section>
     </div>
