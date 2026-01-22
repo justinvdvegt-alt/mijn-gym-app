@@ -15,7 +15,10 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
   const [loading, setLoading] = useState(false);
 
   const healthHistory = state.healthHistory || [];
-  const latestHealth = healthHistory[healthHistory.length - 1];
+  const latestHealth = useMemo(() => {
+    if (!healthHistory.length) return undefined;
+    return [...healthHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  }, [healthHistory]);
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -46,7 +49,7 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
     weight: h.weight
   })).slice(-7);
 
-  // Gebruik de doelen uit HealthStats (gezet via Settings) of de standaardwaarden
+  // Sync goals strictly with latestHealth from state
   const goals = useMemo(() => ({
     cal: latestHealth?.calories || 2500,
     prot: latestHealth?.protein || 180,
@@ -68,6 +71,7 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
         <button 
           onClick={onOpenSettings}
           className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
+          title="Instellingen"
         >
           <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </button>
@@ -77,14 +81,14 @@ export const Dashboard: React.FC<Props> = ({ state, onOpenSettings }) => {
       <section className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm space-y-6">
         <div className="flex justify-between items-end">
           <div className="space-y-1">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kcal Doel: {goals.cal}</h3>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Huidig Doel: {goals.cal} kcal</h3>
             <div className="text-sm font-bold text-slate-600">
-               {dailyTotals.cal} <span className="text-slate-300">/</span> {goals.cal} kcal
+               {dailyTotals.cal} <span className="text-slate-200">/</span> {goals.cal} kcal
             </div>
           </div>
           <div className="text-right">
             <span className={`text-3xl font-black ${calColor}`}>{Math.abs(caloriesRemaining)}</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase ml-2">{isOverLimit ? 'kcal te veel' : 'kcal over'}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase ml-2">{isOverLimit ? 'kcal over limiet' : 'kcal te gaan'}</span>
           </div>
         </div>
         

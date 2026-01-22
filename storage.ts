@@ -45,7 +45,9 @@ export const getPreviousGymEntry = (exerciseName: string, workouts: WorkoutSessi
 };
 
 export const getLatestHealth = (history: HealthStats[]): HealthStats | undefined => {
-    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    if (!history || history.length === 0) return undefined;
+    // CRITICAL: use spread operator to avoid in-place mutation of the state array
+    return [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 };
 
 export const getDailyMeals = (history: MealEntry[]): MealEntry[] => {
