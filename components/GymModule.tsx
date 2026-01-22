@@ -25,8 +25,12 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
   const [reps, setReps] = useState('');
   const [newSessionLabel, setNewSessionLabel] = useState('Full Body - Dag 1');
   const [seconds, setSeconds] = useState(0);
+  const [isConfirmingStop, setIsConfirmingStop] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
-  const activeSession = useMemo(() => workouts.find(w => !w.isCompleted), [workouts]);
+  const activeSession = useMemo(() => {
+    return [...workouts].reverse().find(w => !w.isCompleted);
+  }, [workouts]);
   
   useEffect(() => {
     let interval: any;
@@ -37,6 +41,7 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
       }, 1000);
     } else {
       setSeconds(0);
+      setIsConfirmingStop(false);
     }
     return () => clearInterval(interval);
   }, [activeSession]);
@@ -68,8 +73,81 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
     setReps('');
   };
 
+  const handleConfirmFinish = () => {
+    if (activeSession) {
+      onFinishSession(activeSession.id);
+      setIsConfirmingStop(false);
+      setView('history');
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (itemToDelete) {
+      onDelete(itemToDelete);
+      setItemToDelete(null);
+    }
+  };
+
   return (
-    <div className="p-6 space-y-6 pb-24 animate-slide-up">
+    <div className="p-6 space-y-6 pb-24 animate-slide-up relative min-h-screen bg-white">
+      {/* CUSTOM STOP WORKOUT CONFIRMATION */}
+      {isConfirmingStop && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-6 shadow-2xl animate-scale-up border border-slate-100">
+            <div className="text-center space-y-2">
+              <div className="text-4xl">🏁</div>
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Training Voltooid?</h3>
+              <p className="text-slate-500 font-medium text-sm">We slaan je progressie op en stoppen de timer.</p>
+            </div>
+            <div className="space-y-3">
+              <button 
+                type="button"
+                onClick={handleConfirmFinish}
+                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-100 uppercase tracking-widest text-xs active:scale-95 transition-all block"
+              >
+                Ja, Opslaan
+              </button>
+              <button 
+                type="button"
+                onClick={() => setIsConfirmingStop(false)}
+                className="w-full bg-slate-100 text-slate-500 font-black py-5 rounded-2xl uppercase tracking-widest text-xs active:scale-95 transition-all block"
+              >
+                Nog even niet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM DELETE CONFIRMATION */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-[110] bg-red-900/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-6 shadow-2xl animate-scale-up">
+            <div className="text-center space-y-2">
+              <div className="text-4xl">🗑️</div>
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Verwijderen?</h3>
+              <p className="text-slate-500 font-medium text-sm">Weet je zeker dat je deze training uit je historie wilt wissen?</p>
+            </div>
+            <div className="space-y-3">
+              <button 
+                type="button"
+                onClick={handleConfirmDelete}
+                className="w-full bg-red-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-red-100 uppercase tracking-widest text-xs active:scale-95 transition-all block"
+              >
+                Ja, Verwijder nu
+              </button>
+              <button 
+                type="button"
+                onClick={() => setItemToDelete(null)}
+                className="w-full bg-slate-100 text-slate-500 font-black py-5 rounded-2xl uppercase tracking-widest text-xs active:scale-95 transition-all block"
+              >
+                Annuleer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-black text-slate-900">Gym Mode</h2>
@@ -100,20 +178,32 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-brand-600 p-6 rounded-[32px] shadow-lg text-white space-y-4 relative overflow-hidden">
-                <div className="flex justify-between items-center relative z-10">
+              <div className="bg-slate-900 p-6 rounded-[32px] shadow-2xl text-white space-y-6 relative overflow-hidden group">
+                <div className="flex justify-between items-start relative z-10">
                   <div>
-                    <div className="text-[10px] font-black uppercase opacity-80 tracking-widest flex items-center gap-2 mb-1">
-                      <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                      Bezig: {formatTime(seconds)}
+                    <div className="text-[10px] font-black uppercase text-brand-400 tracking-widest flex items-center gap-2 mb-1">
+                      <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                      LIVE: {formatTime(seconds)}
                     </div>
                     <div className="text-2xl font-black">{activeSession.label}</div>
                   </div>
+                  <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
+                    <span className="text-xs font-black">{activeSession.exercises.length} sets</span>
+                  </div>
                 </div>
-                <button onClick={() => onFinishSession(activeSession.id)} className="w-full bg-white text-brand-600 font-black py-4 rounded-2xl shadow-sm uppercase tracking-[0.2em] text-[10px] active:scale-95 transition-all relative z-10">
-                  STOP & OPSLAAN TRAINING
+                
+                <button 
+                  type="button"
+                  onClick={() => setIsConfirmingStop(true)} 
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-5 rounded-2xl shadow-lg shadow-red-500/20 uppercase tracking-[0.2em] text-xs active:scale-95 transition-all relative z-10 flex items-center justify-center gap-3"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                  </svg>
+                  STOP WORKOUT
                 </button>
-                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl group-hover:bg-brand-500/20 transition-all"></div>
               </div>
 
               <form onSubmit={handleSubmitSet} className="space-y-4">
@@ -121,7 +211,7 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
                   <input list="exercises" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-50 p-4 rounded-2xl text-lg font-black outline-none text-center border-2 border-transparent focus:border-brand-500 transition-all" placeholder="Welke oefening?" />
                   <datalist id="exercises">{COMMON_EXERCISES.map(ex => <option key={ex} value={ex} />)}</datalist>
                   {previous && (
-                    <div className="bg-brand-50 p-4 rounded-xl flex justify-between items-center animate-pulse">
+                    <div className="bg-brand-50 p-4 rounded-xl flex justify-between items-center animate-pulse border border-brand-100">
                       <span className="text-[10px] font-black text-brand-600 uppercase">Vorige keer:</span>
                       <span className="text-sm font-black text-brand-900">{previous.weight}kg × {previous.reps}</span>
                     </div>
@@ -138,7 +228,7 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
                     <input type="number" value={reps} onChange={(e) => setReps(e.target.value)} className="w-full bg-transparent text-4xl font-black text-center outline-none text-slate-900" placeholder="0" />
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-slate-900 text-white font-black p-5 rounded-2xl shadow-xl active:scale-95 transition-all text-sm uppercase tracking-widest">Log Set</button>
+                <button type="submit" className="w-full bg-brand-600 text-white font-black p-5 rounded-2xl shadow-xl shadow-brand-100 active:scale-95 transition-all text-sm uppercase tracking-widest">Log Set</button>
               </form>
 
               <div className="space-y-3">
@@ -159,12 +249,16 @@ export const GymModule: React.FC<Props> = ({ workouts, onAddSet, onStartSession,
           {completedSessions.map(session => (
             <div key={session.id} className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm relative group animate-slide-up">
               <button 
-                onClick={() => onDelete(session.id)} 
-                className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors p-2 bg-slate-50 rounded-xl"
+                type="button"
+                onClick={() => setItemToDelete(session.id)} 
+                className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors p-4 bg-slate-50/50 rounded-2xl"
+                aria-label="Verwijder training"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
-              <div className="p-5 bg-slate-50/50 border-b border-slate-100">
+              <div className="p-5 bg-slate-50/50 border-b border-slate-100 pr-16">
                 <h3 className="font-black text-slate-900 text-sm">{session.label}</h3>
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
                   {new Date(session.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}

@@ -60,9 +60,8 @@ const App: React.FC = () => {
   };
 
   const handleDeleteWorkout = (id: string) => {
-    if (confirm('Wil je deze training verwijderen?')) {
-      setState(prev => ({ ...prev, workouts: prev.workouts.filter(w => w.id !== id) }));
-    }
+    // Browser confirm verwijderd, bevestiging wordt nu in de component zelf gedaan
+    setState(prev => ({ ...prev, workouts: prev.workouts.filter(w => w.id !== id) }));
   };
 
   const handleAddCardio = (entry: CardioEntry) => {
