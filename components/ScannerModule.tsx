@@ -28,9 +28,9 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   
-  // Editable base values (always per 100g/ml)
+  // De 'Basis': altijd per 100g of 100ml
   const [baseNutrition, setBaseNutrition] = useState<NutritionData | null>(null);
-  // Quantity for total calculation - default to 100 as requested
+  // De 'Portie': standaard op 100
   const [quantity, setQuantity] = useState<number>(100);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +39,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
 
   const todayMeals = getDailyMeals(mealHistory);
 
-  // LIVE BEREKENING: Live totals calculation using useMemo for immediate feedback
+  // LIVE BEREKENING: Reageert direct op baseNutrition OF quantity wijzigingen
   const liveTotals = useMemo(() => {
     if (!baseNutrition) return null;
     const factor = quantity / 100;
@@ -55,7 +55,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
   useEffect(() => {
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
+        scannerRef.current.stop().catch(() => {});
       }
     };
   }, []);
@@ -71,19 +71,21 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
         scannerRef.current = html5QrCode;
         await html5QrCode.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 150 } },
+          { fps: 15, qrbox: { width: 280, height: 160 } },
           async (decodedText) => { await handleBarcodeResult(decodedText); },
-          undefined
+          () => {} // silent failure for scan attempts
         );
       } catch (err) {
-        setError("Camera start mislukt.");
+        setError("Camera kon niet worden gestart.");
         setMode('idle');
       }
-    }, 100);
+    }, 150);
   };
 
   const handleBarcodeResult = async (barcode: string) => {
-    if (scannerRef.current) await scannerRef.current.stop();
+    if (scannerRef.current) {
+      try { await scannerRef.current.stop(); } catch(e){}
+    }
     setLoading(true);
     setMode('idle');
     try {
@@ -93,8 +95,8 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
         const p = data.product;
         const nut = p.nutriments;
         setBaseNutrition({
-          product_naam: p.product_name || "Onbekend product",
-          eenheid: p.ingredients_text_with_allergens?.toLowerCase().includes('water') ? 'ml' : 'g',
+          product_naam: p.product_name || "Barcode Product",
+          eenheid: p.product_name?.toLowerCase().includes('drank') || nut['energy-kcal_unit'] === 'ml' ? 'ml' : 'g',
           kcal_per_100: Math.round(nut['energy-kcal_100'] || 0),
           eiwit_per_100: Number(nut.proteins_100 || 0),
           koolhydraten_per_100: Number(nut.carbohydrates_100 || 0),
@@ -102,7 +104,7 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
         });
         setQuantity(100);
       } else {
-        throw new Error("Product niet gevonden.");
+        throw new Error("Product onbekend in database.");
       }
     } catch (err: any) {
       setError(err.message);
@@ -161,9 +163,13 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
     setPreview(null);
     setLoading(false);
     setError(null);
+    if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+    }
   };
 
-  const updateField = (key: keyof NutritionData, val: string | number) => {
+  const updateField = (key: keyof NutritionData, val: any) => {
     if (!baseNutrition) return;
     setBaseNutrition({ ...baseNutrition, [key]: val });
   };
@@ -171,14 +177,14 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
   return (
     <div className="p-6 space-y-8 pb-32 animate-slide-up bg-white min-h-screen">
       <header>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">AI Scanner</h2>
-        <p className="text-sm text-slate-500 font-medium">Log je voeding met precisie.</p>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Fitness Scanner</h2>
+        <p className="text-sm text-slate-500 font-medium">Hybride Barcode & AI Vision.</p>
       </header>
 
-      {/* Progress Monitor */}
+      {/* Top Stats Monitor */}
       <div className="bg-slate-900 p-6 rounded-[32px] text-white shadow-xl grid grid-cols-4 gap-4 text-center">
         <div className="space-y-1">
-          <div className="text-[10px] font-black text-brand-400 uppercase">Kcal</div>
+          <div className="text-[10px] font-black text-brand-400 uppercase">Vandaag</div>
           <div className="text-lg font-black">{dailyTotal.cal} <span className="text-[10px] opacity-30">/ {goalCal}</span></div>
         </div>
         <div className="space-y-1">
@@ -215,46 +221,48 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
       )}
 
       {mode === 'barcode' && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-slide-up">
           <div id={scannerId} className="flex-1 w-full bg-black"></div>
-          <div className="p-10 bg-black/80 backdrop-blur-md flex justify-center">
-            <button onClick={reset} className="bg-white text-black px-10 py-5 rounded-full font-black uppercase tracking-widest">Annuleren</button>
+          <div className="p-10 bg-black/90 backdrop-blur-md flex justify-center">
+            <button onClick={reset} className="bg-white text-black px-12 py-5 rounded-full font-black uppercase tracking-widest shadow-2xl">Sluiten</button>
           </div>
         </div>
       )}
 
       {loading && (
-        <div className="flex flex-col items-center justify-center py-20 gap-6">
+        <div className="flex flex-col items-center justify-center py-24 gap-6">
           <div className="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-black text-slate-900 uppercase tracking-widest animate-pulse">OCR Analyse...</p>
+          <div className="text-center space-y-1">
+            <p className="font-black text-slate-900 uppercase tracking-widest animate-pulse">Data Extractie...</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">Label wordt gelezen</p>
+          </div>
         </div>
       )}
 
       {error && (
         <div className="bg-red-50 p-10 rounded-[40px] border border-red-100 text-center space-y-6">
-          <div className="text-4xl">⚠️</div>
-          <p className="text-red-600 font-bold">{error}</p>
-          <button onClick={reset} className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest">Probeer Opnieuw</button>
+          <div className="text-5xl">⚠️</div>
+          <p className="text-red-600 font-black text-sm uppercase tracking-tight">{error}</p>
+          <button onClick={reset} className="w-full bg-red-600 text-white py-5 rounded-3xl font-black uppercase tracking-widest shadow-lg">Opnieuw</button>
         </div>
       )}
 
       {baseNutrition && !loading && (
         <div className="space-y-8 animate-slide-up">
           {preview && (
-            <div className="rounded-[40px] overflow-hidden aspect-video border border-slate-100 shadow-lg">
+            <div className="rounded-[40px] overflow-hidden aspect-video border-4 border-slate-50 shadow-2xl">
               <img src={preview} className="w-full h-full object-cover" alt="Scan result" />
             </div>
           )}
 
-          {/* EDITABLE FIELDS & LIVE CALCULATOR */}
-          <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-8">
+          <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
             <div className="space-y-2">
-               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Product</label>
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Product (Gevonden via OCR/DB)</label>
                <input 
                  type="text" 
                  value={baseNutrition.product_naam} 
                  onChange={(e) => updateField('product_naam', e.target.value)}
-                 className="w-full bg-white p-5 rounded-2xl text-lg font-black text-slate-900 border-2 border-transparent focus:border-brand-500 outline-none shadow-sm"
+                 className="w-full bg-white p-5 rounded-2xl text-lg font-black text-slate-900 border-2 border-transparent focus:border-brand-500 outline-none shadow-sm transition-all"
                />
             </div>
 
@@ -273,7 +281,6 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
                  <input 
                    type="number" 
                    step="0.1"
-                   /* Fixed property name from eiwit_100 to eiwit_per_100 to match NutritionData interface */
                    value={baseNutrition.eiwit_per_100} 
                    onChange={(e) => updateField('eiwit_per_100', Number(e.target.value))}
                    className="w-full bg-white p-5 rounded-2xl text-2xl font-black text-slate-900 outline-none shadow-sm"
@@ -281,50 +288,48 @@ export const ScannerModule: React.FC<Props> = ({ onAdd, onDelete, dailyTotal, me
                </div>
             </div>
 
-            {/* INTERACTIEVE CALCULATOR: HOEVEELHEID */}
-            <div className="bg-brand-600 p-8 rounded-[32px] text-white shadow-xl space-y-4">
+            {/* PORTIE CALCULATOR */}
+            <div className="bg-brand-600 p-8 rounded-[32px] text-white shadow-xl space-y-6 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
                <div className="flex justify-between items-center">
-                 <span className="text-3xl font-black">{quantity} {baseNutrition.eenheid}</span>
-                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Hoeveelheid ({baseNutrition.eenheid})</span>
+                 <span className="text-3xl font-black tracking-tighter">{quantity} {baseNutrition.eenheid}</span>
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Gekozen Portie</span>
                </div>
                <input 
                  type="range" min="1" max="1000" step="1" value={quantity} 
                  onChange={(e) => setQuantity(Number(e.target.value))}
-                 className="w-full h-2 bg-brand-400 rounded-lg appearance-none cursor-pointer accent-white"
+                 className="w-full h-3 bg-brand-400 rounded-lg appearance-none cursor-pointer accent-white"
                />
-               <input 
-                 type="number" 
-                 value={quantity} 
-                 onChange={(e) => setQuantity(Number(e.target.value))}
-                 className="w-full bg-white/20 p-4 rounded-xl text-center text-xl font-black border-none focus:ring-0 outline-none placeholder-white/50"
-                 placeholder="Handmatig invullen..."
-               />
+               <div className="flex gap-2">
+                   {[100, 250, 500].map(val => (
+                       <button key={val} onClick={() => setQuantity(val)} className="flex-1 bg-brand-700/50 py-2 rounded-xl text-[10px] font-black uppercase">{val}{baseNutrition.eenheid}</button>
+                   ))}
+               </div>
             </div>
 
-            {/* VISUELE FEEDBACK: TOTAAL */}
-            <div className="bg-slate-900 p-8 rounded-[32px] text-white text-center space-y-4 relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
+            {/* LIVE TOTAAL WEERGAVE */}
+            <div className="bg-slate-900 p-8 rounded-[32px] text-white text-center space-y-5 relative">
                <div className="text-[10px] font-black uppercase text-brand-400 tracking-widest">Totaal voor deze portie</div>
-               <div className="text-5xl font-black">{liveTotals?.calories} <span className="text-xl opacity-40">kcal</span></div>
-               <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/10">
-                 <div>
+               <div className="text-6xl font-black tracking-tighter tabular-nums">{liveTotals?.calories} <span className="text-xl opacity-30">kcal</span></div>
+               <div className="grid grid-cols-3 gap-2 pt-5 border-t border-white/5">
+                 <div className="space-y-1">
                    <div className="text-[9px] font-black opacity-40 uppercase">Eiwit</div>
-                   <div className="font-black">{liveTotals?.protein}g</div>
+                   <div className="font-black text-lg">{liveTotals?.protein}g</div>
                  </div>
-                 <div>
+                 <div className="space-y-1">
                    <div className="text-[9px] font-black opacity-40 uppercase">Koolh</div>
-                   <div className="font-black">{liveTotals?.carbs}g</div>
+                   <div className="font-black text-lg">{liveTotals?.carbs}g</div>
                  </div>
-                 <div>
+                 <div className="space-y-1">
                    <div className="text-[9px] font-black opacity-40 uppercase">Vet</div>
-                   <div className="font-black">{liveTotals?.fats}g</div>
+                   <div className="font-black text-lg">{liveTotals?.fats}g</div>
                  </div>
                </div>
             </div>
 
             <div className="flex gap-4">
-               <button onClick={reset} className="flex-1 bg-white text-slate-400 py-6 rounded-3xl font-black uppercase text-xs tracking-widest shadow-sm">Reset</button>
-               <button onClick={handleSave} className="flex-[2] bg-brand-600 text-white py-6 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl shadow-brand-100 active:scale-95 transition-all">Sessie Opslaan</button>
+               <button onClick={reset} className="flex-1 bg-white text-slate-400 py-6 rounded-3xl font-black uppercase text-xs tracking-widest shadow-sm active:scale-95 transition-all">Reset</button>
+               <button onClick={handleSave} className="flex-[2] bg-brand-600 text-white py-6 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl shadow-brand-100 active:scale-95 transition-all">Log Maaltijd</button>
             </div>
           </div>
         </div>
